@@ -64,14 +64,6 @@ fn set_authorities<C: Client, S: Signer>(
     Ok(())
 }
 
-fn move_nonce_account<C: Client, S: Signer>(
-    _client: &C,
-    _nonce_keypair: &S,
-) -> Result<(), TransportError> {
-    println!("Move nonce account");
-    Ok(())
-}
-
 pub(crate) fn move_stake_account<C: Client, S: Signer>(
     client: &C,
     keys: &TransferStakeKeys<S>,
@@ -91,6 +83,5 @@ pub(crate) fn move_stake_account<C: Client, S: Signer>(
         )?;
         set_authorities(client, &new_stake_account_address, &keys)?;
     }
-    move_nonce_account(client, &keys.stake_authority_keypair)?;
     Ok(())
 }
