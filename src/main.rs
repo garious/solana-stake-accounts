@@ -1,7 +1,7 @@
 mod args;
 mod stake_accounts;
 
-use crate::args::parse_args;
+use crate::args::{parse_args, Command};
 use crate::stake_accounts::{move_stake_account, TransferStakeKeys};
 use solana_client::thin_client::create_client;
 use solana_core::{cluster_info::VALIDATOR_PORT_RANGE, gossip_service::discover_cluster};
@@ -20,11 +20,17 @@ fn main() {
     }
     let target = target.expect("should have target");
     let client = create_client(target, VALIDATOR_PORT_RANGE);
-    let keys = TransferStakeKeys {
-        stake_authority_keypair: Keypair::new(),
-        withdraw_authority_keypair: Keypair::new(),
-        new_stake_authority_pubkey: Pubkey::default(),
-        new_withdraw_authority_pubkey: Pubkey::default(),
-    };
-    move_stake_account(&client, &keys).unwrap();
+
+    match config.command {
+        Command::Move(_) => {
+            let keys = TransferStakeKeys {
+                stake_authority_keypair: Keypair::new(),
+                withdraw_authority_keypair: Keypair::new(),
+                new_stake_authority_pubkey: Pubkey::default(),
+                new_withdraw_authority_pubkey: Pubkey::default(),
+            };
+            move_stake_account(&client, &keys).unwrap();
+        }
+        _ => todo!(),
+    }
 }

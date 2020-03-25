@@ -90,6 +90,33 @@ fn fee_payer_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help("Fee payer")
 }
 
+fn sender_keypair_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("sender_keypair")
+        .required(true)
+        .takes_value(true)
+        .value_name("SENDER_KEYPAIR")
+        .validator(is_valid_signer)
+        .help("Keypair to fund accounts")
+}
+
+fn base_pubkey_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("base_pubkey")
+        .required(true)
+        .takes_value(true)
+        .value_name("BASE_PUBKEY")
+        .validator(is_valid_pubkey)
+        .help("Public key which stake account addresses are derived from")
+}
+
+fn new_base_keypair_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("new_base_keypair")
+        .required(true)
+        .takes_value(true)
+        .value_name("NEW_BASE_KEYPAIR")
+        .validator(is_valid_signer)
+        .help("New keypair which stake account addresses are derived from")
+}
+
 fn stake_authority_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("stake_authority")
         .long("stake-authority")
@@ -191,15 +218,7 @@ where
             SubCommand::with_name("new")
                 .about("Create derived stake accounts")
                 .arg(fee_payer_arg())
-                .arg(
-                    Arg::with_name("sender_keypair")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("SENDER_KEYPAIR")
-                        .validator(is_valid_signer)
-                        .help("Keypair to fund accounts"),
-                )
+                .arg(sender_keypair_arg().index(1))
                 .arg(
                     Arg::with_name("base_keypair")
                         .required(true)
@@ -250,24 +269,8 @@ where
             SubCommand::with_name("deposit")
                 .about("Add funds to existing stake accounts")
                 .arg(fee_payer_arg())
-                .arg(
-                    Arg::with_name("sender_keypair")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("SENDER_KEYPAIR")
-                        .validator(is_valid_signer)
-                        .help("Keypair to fund accounts"),
-                )
-                .arg(
-                    Arg::with_name("base_pubkey")
-                        .required(true)
-                        .index(2)
-                        .takes_value(true)
-                        .value_name("BASE_PUBKEY")
-                        .validator(is_valid_signer)
-                        .help("Public key which stake account addresses are derived from"),
-                )
+                .arg(sender_keypair_arg().index(1))
+                .arg(base_pubkey_arg().index(2))
                 .arg(
                     Arg::with_name("amount")
                         .required(true)
@@ -284,58 +287,26 @@ where
         .subcommand(
             SubCommand::with_name("balance")
                 .about("Sum balances of all derived stake accounts")
-                .arg(
-                    Arg::with_name("base_pubkey")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("BASE_PUBKEY")
-                        .validator(is_valid_pubkey)
-                        .help("Public key which stake account addresses are derived from"),
-                )
+                .arg(base_pubkey_arg().index(1))
                 .arg(num_accounts_arg()),
         )
         .subcommand(
             SubCommand::with_name("pubkeys")
                 .about("Show public keys of all derived stake accounts")
-                .arg(
-                    Arg::with_name("base_pubkey")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("BASE_PUBKEY")
-                        .validator(is_valid_pubkey)
-                        .help("Public key which stake account addresses are derived from"),
-                )
+                .arg(base_pubkey_arg().index(1))
                 .arg(num_accounts_arg()),
         )
         .subcommand(
             SubCommand::with_name("show")
                 .about("Show all derived stake accounts")
-                .arg(
-                    Arg::with_name("base_pubkey")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("BASE_PUBKEY")
-                        .validator(is_valid_pubkey)
-                        .help("Public key which stake account addresses are derived from"),
-                )
+                .arg(base_pubkey_arg().index(1))
                 .arg(num_accounts_arg()),
         )
         .subcommand(
             SubCommand::with_name("withdraw")
                 .about("Withdraw SOL from a derived stake account")
                 .arg(fee_payer_arg())
-                .arg(
-                    Arg::with_name("base_pubkey")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("BASE_PUBKEY")
-                        .validator(is_valid_pubkey)
-                        .help("Public key which stake account addresses are derived from"),
-                )
+                .arg(base_pubkey_arg().index(1))
                 .arg(
                     Arg::with_name("recipient_account_address")
                         .required(true)
@@ -367,24 +338,8 @@ where
             SubCommand::with_name("rebase")
                 .about("Move derived stake accounts to a new location")
                 .arg(fee_payer_arg())
-                .arg(
-                    Arg::with_name("base_pubkey")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("BASE_PUBKEY")
-                        .validator(is_valid_pubkey)
-                        .help("Public key which stake account addresses are derived from"),
-                )
-                .arg(
-                    Arg::with_name("new_base_keypair")
-                        .required(true)
-                        .index(2)
-                        .takes_value(true)
-                        .value_name("NEW_BASE_KEYPAIR")
-                        .validator(is_valid_signer)
-                        .help("New keypair which stake account addresses are derived from"),
-                )
+                .arg(base_pubkey_arg().index(1))
+                .arg(new_base_keypair_arg().index(2))
                 .arg(stake_authority_arg())
                 .arg(num_accounts_arg()),
         )
@@ -392,15 +347,7 @@ where
             SubCommand::with_name("authorize")
                 .about("Set new authorities in all derived stake accounts")
                 .arg(fee_payer_arg())
-                .arg(
-                    Arg::with_name("base_pubkey")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("BASE_PUBKEY")
-                        .validator(is_valid_pubkey)
-                        .help("Public key which stake account addresses are derived from"),
-                )
+                .arg(base_pubkey_arg().index(1))
                 .arg(stake_authority_arg())
                 .arg(withdraw_authority_arg())
                 .arg(new_stake_authority_arg())
@@ -411,15 +358,8 @@ where
             SubCommand::with_name("move")
                 .about("Rebase and set new authorities in all derived stake accounts")
                 .arg(fee_payer_arg())
-                .arg(
-                    Arg::with_name("base_pubkey")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true)
-                        .value_name("BASE_PUBKEY")
-                        .validator(is_valid_pubkey)
-                        .help("Public key which stake account addresses are derived from"),
-                )
+                .arg(base_pubkey_arg().index(1))
+                .arg(new_base_keypair_arg().index(2))
                 .arg(stake_authority_arg())
                 .arg(withdraw_authority_arg())
                 .arg(new_stake_authority_arg())
