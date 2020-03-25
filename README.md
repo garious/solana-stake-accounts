@@ -40,6 +40,14 @@ Sum the balance of all stake accounts, including a fee-payer account:
 solana-stake-accounts balance <STAKE_AUTHORITY_PUBKEY> --include-fee-payer
 ```
 
+### Show all stake accounts
+
+Show all the stake accounts derived from the given public key, including a fee-payer account, if it exists:
+
+```bash
+solana-stake-accounts show <STAKE_AUTHORITY_PUBKEY>
+```
+
 ### Withdraw tokens
 
 Withdraw tokens from the first derived, unlocked stake account:
