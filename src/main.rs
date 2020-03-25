@@ -73,6 +73,38 @@ fn num_accounts_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help("Number of derived stake accounts")
 }
 
+fn cliff_fraction_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("cliff_fraction")
+        .long("cliff-fraction")
+        .takes_value(true)
+        .value_name("PERCENTAGE")
+        .help("Percentage of stake to unlock in the first derived stake account")
+}
+
+fn cliff_years_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("cliff_years")
+        .long("cliff-years")
+        .takes_value(true)
+        .value_name("NUMBER")
+        .help("Years until first unlock")
+}
+
+fn unlock_years_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("unlock_years")
+        .long("unlock-years")
+        .takes_value(true)
+        .value_name("NUMBER")
+        .help("Years between unlocks after cliff")
+}
+
+fn unlocks_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("unlocks")
+        .long("unlocks")
+        .takes_value(true)
+        .value_name("NUMBER")
+        .help("Number of unlocks after cliff; one derived stake account per unlock")
+}
+
 fn parse_args<'a, I, T>(args: I) -> ArgMatches<'a>
 where
     I: IntoIterator<Item = T>,
@@ -109,7 +141,7 @@ where
                         .help("Keypair to fund accounts"),
                 )
                 .arg(
-                    Arg::with_name("base_keypar")
+                    Arg::with_name("base_keypair")
                         .required(true)
                         .index(2)
                         .takes_value(true)
@@ -141,36 +173,10 @@ where
                         .validator(is_valid_pubkey)
                         .help("Withdraw authority"),
                 )
-                .arg(
-                    Arg::with_name("cliff_fraction")
-                        .long("cliff-fraction")
-                        .takes_value(true)
-                        .value_name("PERCENTAGE")
-                        .help("Percentage of stake to unlock in the first derived stake account"),
-                )
-                .arg(
-                    Arg::with_name("cliff_years")
-                        .long("cliff-years")
-                        .takes_value(true)
-                        .value_name("NUMBER")
-                        .help("Years until first unlock"),
-                )
-                .arg(
-                    Arg::with_name("unlock_years")
-                        .long("unlock-years")
-                        .takes_value(true)
-                        .value_name("NUMBER")
-                        .help("Years between unlocks after cliff"),
-                )
-                .arg(
-                    Arg::with_name("unlocks")
-                        .long("unlocks")
-                        .takes_value(true)
-                        .value_name("NUMBER")
-                        .help(
-                            "Number of unlocks after cliff; one derived stake account per unlock",
-                        ),
-                )
+                .arg(cliff_fraction_arg())
+                .arg(cliff_years_arg())
+                .arg(unlock_years_arg())
+                .arg(unlocks_arg())
                 .arg(
                     Arg::with_name("custodian")
                         .long("custodian")
@@ -179,6 +185,41 @@ where
                         .validator(is_valid_pubkey)
                         .help("Authority to set lockups"),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name("deposit")
+                .about("Add funds to existing stake accounts")
+                .arg(fee_payer_arg())
+                .arg(
+                    Arg::with_name("sender_keypair")
+                        .required(true)
+                        .index(1)
+                        .takes_value(true)
+                        .value_name("SENDER_KEYPAIR")
+                        .validator(is_valid_signer)
+                        .help("Keypair to fund accounts"),
+                )
+                .arg(
+                    Arg::with_name("base_pubkey")
+                        .required(true)
+                        .index(2)
+                        .takes_value(true)
+                        .value_name("BASE_PUBKEY")
+                        .validator(is_valid_signer)
+                        .help("Public key which stake account addresses are derived from"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .required(true)
+                        .index(3)
+                        .takes_value(true)
+                        .value_name("AMOUNT")
+                        .help("Amount to move into the new stake accounts, in SOL"),
+                )
+                .arg(cliff_fraction_arg())
+                .arg(cliff_years_arg())
+                .arg(unlock_years_arg())
+                .arg(unlocks_arg()),
         )
         .subcommand(
             SubCommand::with_name("balance")

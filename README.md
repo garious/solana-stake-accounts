@@ -8,20 +8,36 @@ conventions, such that stake accounts are easy to find and generally more access
 
 ### Create a stake account
 
-Create a derived stake account at the stake authority public key:
+Create and fund a derived stake account at the stake authority public key:
 
 ```bash
 solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> \
     --stake-authority <PUBKEY> --withdraw-authority <PUBKEY>
 ```
 
-Create derived stake accounts with a vesting schedule:
+Create and fund derived stake accounts with a vesting schedule:
 
 ```bash
 solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> \
     --stake-authority <PUBKEY> --withdraw-authority <PUBKEY> \
     --cliff <PERCENTAGE> --cliff-years <NUMBER> --unlock-years <NUMBER> \
     --unlocks <NUMBER> --custodian <PUBKEY>
+```
+
+### Fund existing stake accounts
+
+Deposit funds to an existing stake account.
+
+```bash
+solana-stake-accounts deposit <SENDER_KEYPAIR> <BASE_PUBKEY> <AMOUNT> \
+```
+
+Deposit funds to derived stake accounts with a vesting schedule:
+
+```bash
+solana-stake-accounts deposit <SENDER_KEYPAIR> <BASE_PUBKEY> <AMOUNT> \
+    --cliff <PERCENTAGE> --cliff-years <NUMBER> --unlock-years <NUMBER> \
+    --unlocks <NUMBER>
 ```
 
 ### Get stake account balances
