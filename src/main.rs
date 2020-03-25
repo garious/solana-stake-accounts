@@ -142,8 +142,8 @@ where
                         .help("Withdraw authority"),
                 )
                 .arg(
-                    Arg::with_name("cliff")
-                        .long("cliff")
+                    Arg::with_name("cliff_fraction")
+                        .long("cliff-fraction")
                         .takes_value(true)
                         .value_name("PERCENTAGE")
                         .help("Percentage of stake to unlock in the first derived stake account"),
