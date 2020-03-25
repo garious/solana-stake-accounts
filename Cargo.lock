@@ -3339,6 +3339,7 @@ name = "solana-stake-accounts"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "solana-clap-utils",
  "solana-client",
  "solana-core",
  "solana-net-utils",

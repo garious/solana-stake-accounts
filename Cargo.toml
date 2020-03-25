@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 clap = "2.33.0"
+solana-clap-utils = "1.0.9"
 solana-client = "1.0.9"
 solana-core = "1.0.9"
 solana-net-utils = "1.0.9"

@@ -12,14 +12,14 @@ Create a derived stake account at the stake authority public key:
 
 ```bash
 solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> \
-    --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR>
+    --stake-authority <PUBKEY> --withdraw-authority <PUBKEY>
 ```
 
 Create derived stake accounts with a vesting schedule:
 
 ```bash
 solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> \
-    --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR> \
+    --stake-authority <PUBKEY> --withdraw-authority <PUBKEY> \
     --cliff <PERCENTAGE> --cliff-years <NUMBER> --unlock-years <NUMBER> \
     --unlocks <NUMBER> --custodian <PUBKEY>
 ```
