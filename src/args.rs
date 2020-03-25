@@ -27,16 +27,52 @@ pub(crate) struct NewCommandConfig {
     pub deposit_config: DepositCommandConfig,
 }
 
+pub(crate) struct QueryCommandConfig {
+    pub base_pubkey: KeypairUrl,
+    pub num_accounts: Option<usize>,
+}
+
+pub(crate) struct WithdrawCommandConfig {
+    pub base_pubkey: KeypairUrl,
+    pub recipient_account_address: KeypairUrl,
+    pub lamports: u64,
+    pub index: Option<usize>,
+    pub withdraw_authority: Option<KeypairUrl>,
+}
+
+pub(crate) struct RebaseCommandConfig {
+    pub fee_payer: Option<KeypairUrl>,
+    pub base_pubkey: KeypairUrl,
+    pub new_base_keypair: KeypairUrl,
+    pub stake_authority: Option<KeypairUrl>,
+    pub num_accounts: Option<usize>,
+}
+
+pub(crate) struct AuthorizeCommandConfig {
+    pub fee_payer: Option<KeypairUrl>,
+    pub base_pubkey: KeypairUrl,
+    pub stake_authority: Option<KeypairUrl>,
+    pub withdraw_authority: Option<KeypairUrl>,
+    pub new_stake_authority: Option<KeypairUrl>,
+    pub new_withdraw_authority: Option<KeypairUrl>,
+    pub num_accounts: Option<usize>,
+}
+
+pub(crate) struct MoveCommandConfig {
+    pub rebase_config: RebaseCommandConfig,
+    pub authorize_config: AuthorizeCommandConfig,
+}
+
 pub(crate) enum Command {
     New(NewCommandConfig),
     Deposit(DepositCommandConfig),
-    Balance,
-    Pubkeys,
-    Show,
-    Withdraw,
-    Rebase,
-    Authorize,
-    Move,
+    Balance(QueryCommandConfig),
+    Pubkeys(QueryCommandConfig),
+    Show(QueryCommandConfig),
+    Withdraw(WithdrawCommandConfig),
+    Rebase(RebaseCommandConfig),
+    Authorize(AuthorizeCommandConfig),
+    Move(MoveCommandConfig),
 }
 
 pub(crate) struct CommandConfig {
@@ -325,7 +361,7 @@ where
                         .value_name("NUMBER")
                         .help("Index of derived stake account to withdraw from"),
                 )
-                .arg(stake_authority_arg()),
+                .arg(withdraw_authority_arg()),
         )
         .subcommand(
             SubCommand::with_name("rebase")
@@ -427,6 +463,82 @@ fn parse_new_args(matches: &ArgMatches<'_>) -> NewCommandConfig {
     }
 }
 
+fn parse_query_args(matches: &ArgMatches<'_>) -> QueryCommandConfig {
+    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
+    let num_accounts = value_t!(matches, "num_accounts", usize).ok();
+    QueryCommandConfig {
+        base_pubkey,
+        num_accounts,
+    }
+}
+
+fn parse_withdraw_args(matches: &ArgMatches<'_>) -> WithdrawCommandConfig {
+    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
+    let recipient_account_address =
+        parse_keypair_path(matches.value_of("recipient_account_address").unwrap());
+    let withdraw_authority = matches
+        .value_of("withdraw_authority")
+        .map(parse_keypair_path);
+    let lamports = sol_to_lamports(value_t_or_exit!(matches, "amount", f64));
+    let index = value_t!(matches, "index", usize).ok();
+    WithdrawCommandConfig {
+        base_pubkey,
+        recipient_account_address,
+        lamports,
+        index,
+        withdraw_authority,
+    }
+}
+
+fn parse_rebase_args(matches: &ArgMatches<'_>) -> RebaseCommandConfig {
+    let fee_payer = matches.value_of("fee_payer").map(parse_keypair_path);
+    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
+    let new_base_keypair = parse_keypair_path(matches.value_of("new_base_keypair").unwrap());
+    let stake_authority = matches.value_of("stake_authority").map(parse_keypair_path);
+    let num_accounts = value_t!(matches, "num_accounts", usize).ok();
+    RebaseCommandConfig {
+        fee_payer,
+        base_pubkey,
+        new_base_keypair,
+        stake_authority,
+        num_accounts,
+    }
+}
+
+fn parse_authorize_args(matches: &ArgMatches<'_>) -> AuthorizeCommandConfig {
+    let fee_payer = matches.value_of("fee_payer").map(parse_keypair_path);
+    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
+    let stake_authority = matches.value_of("stake_authority").map(parse_keypair_path);
+    let withdraw_authority = matches
+        .value_of("withdraw_authority")
+        .map(parse_keypair_path);
+    let new_stake_authority = matches
+        .value_of("new_stake_authority")
+        .map(parse_keypair_path);
+    let new_withdraw_authority = matches
+        .value_of("new_withdraw_authority")
+        .map(parse_keypair_path);
+    let num_accounts = value_t!(matches, "num_accounts", usize).ok();
+    AuthorizeCommandConfig {
+        fee_payer,
+        base_pubkey,
+        stake_authority,
+        withdraw_authority,
+        new_stake_authority,
+        new_withdraw_authority,
+        num_accounts,
+    }
+}
+
+fn parse_move_args(matches: &ArgMatches<'_>) -> MoveCommandConfig {
+    let rebase_config = parse_rebase_args(matches);
+    let authorize_config = parse_authorize_args(matches);
+    MoveCommandConfig {
+        rebase_config,
+        authorize_config,
+    }
+}
+
 pub(crate) fn parse_args<'a, I, T>(args: I) -> CommandConfig
 where
     I: IntoIterator<Item = T>,
@@ -445,13 +557,13 @@ where
     let command = match matches.subcommand() {
         ("new", Some(matches)) => Command::New(parse_new_args(matches)),
         ("deposit", Some(matches)) => Command::Deposit(parse_deposit_args(matches)),
-        ("balance", Some(_matches)) => Command::Balance,
-        ("pubkeys", Some(_matches)) => Command::Pubkeys,
-        ("show", Some(_matches)) => Command::Show,
-        ("withdraw", Some(_matches)) => Command::Withdraw,
-        ("rebase", Some(_matches)) => Command::Rebase,
-        ("authorize", Some(_matches)) => Command::Authorize,
-        ("move", Some(_matches)) => Command::Move,
+        ("balance", Some(matches)) => Command::Balance(parse_query_args(matches)),
+        ("pubkeys", Some(matches)) => Command::Pubkeys(parse_query_args(matches)),
+        ("show", Some(matches)) => Command::Show(parse_query_args(matches)),
+        ("withdraw", Some(matches)) => Command::Withdraw(parse_withdraw_args(matches)),
+        ("rebase", Some(matches)) => Command::Rebase(parse_rebase_args(matches)),
+        ("authorize", Some(matches)) => Command::Authorize(parse_authorize_args(matches)),
+        ("move", Some(matches)) => Command::Move(parse_move_args(matches)),
         _ => panic!("Command not found"),
     };
     CommandConfig {
