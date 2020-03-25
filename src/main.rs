@@ -13,8 +13,7 @@ fn main() {
     //    });
     //}
     //let num_nodes = value_t!(matches, "num_nodes", usize).unwrap_or(1);
-    let entrypoint_addr =
-        solana_net_utils::parse_host_port("http://devnet.solana.com:8899").unwrap();
+    let entrypoint_addr = solana_net_utils::parse_host_port("devnet.solana.com:8001").unwrap();
     let num_nodes = 1;
 
     let (nodes, _) = discover_cluster(&entrypoint_addr, num_nodes).unwrap();
