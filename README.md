@@ -11,13 +11,17 @@ conventions, such that stake accounts are easy to find and generally more access
 Create a derived stake account at the stake authority public key:
 
 ```bash
-solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR>
+solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> \
+    --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR>
 ```
 
 Create derived stake accounts with a vesting schedule:
 
 ```bash
-solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> --stake-authority <KEYPAiR> --withdraw-authority <KEYPAIR> --cliff <PERCENTAGE> --cliff-years <NUMBER> --unlock-years <NUMBER> --unlocks <NUMBER> --custodian <PUBKEY>
+solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> \
+    --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR> \
+    --cliff <PERCENTAGE> --cliff-years <NUMBER> --unlock-years <NUMBER> \
+    --unlocks <NUMBER> --custodian <PUBKEY>
 ```
 
 ### Get stake account balances
@@ -68,13 +72,15 @@ solana-stake-accounts show <BASE_PUBKEY> --num-accounts <NUMBER>
 Withdraw tokens from the first derived, unlocked stake account:
 
 ```bash
-solana-stake-accounts withdraw <BASE_PUBKEY> <RECIPIENT_ACCOUNT_ADDRESS> <AMOUNT> --withdraw-authority <KEYPAIR>
+solana-stake-accounts withdraw <BASE_PUBKEY> <RECIPIENT_ACCOUNT_ADDRESS> <AMOUNT> \
+    --withdraw-authority <KEYPAIR>
 ```
 
 Withdraw tokens from a particular stake account:
 
 ```bash
-solana-stake-accounts withdraw <BASE_PUBKEY> <RECIPIENT_ACCOUNT_ADDRESS> <AMOUNT> --withdraw-authority <KEYPAIR> --index <NUMBER>
+solana-stake-accounts withdraw <BASE_PUBKEY> <RECIPIENT_ACCOUNT_ADDRESS> <AMOUNT> \
+    --withdraw-authority <KEYPAIR> --index <NUMBER>
 ```
 
 ### Move stake accounts
@@ -88,11 +94,15 @@ solana-stake-accounts rebase <BASE_PUBKEY> <NEW_BASE_KEYPAIR> --stake-authority 
 Set new authorities:
 
 ```bash
-solana-stake-accounts authorize <BASE_KEYPAIR> --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR> --new-stake-authority <KEYPAIR> --new-withdraw-authority <PUBKEY>
+solana-stake-accounts authorize <BASE_KEYPAIR> \
+    --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR>
+    --new-stake-authority <KEYPAIR> --new-withdraw-authority <PUBKEY>
 ```
 
 Rebase stake accounts and authorize new authorities:
 
 ```bash
-solana-stake-accounts move <BASE_KEYPAIR> --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR> --new-stake-authority <KEYPAIR> --new-withdraw-authority <PUBKEY>
+solana-stake-accounts move <BASE_KEYPAIR> \
+    --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR> \
+    --new-stake-authority <KEYPAIR> --new-withdraw-authority <PUBKEY>
 ```
