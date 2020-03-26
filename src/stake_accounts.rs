@@ -2,9 +2,9 @@ use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{hash::hashv, pubkey::Pubkey, signature::Signer};
 
-pub(crate) struct TransferStakeKeys<S: Signer> {
-    pub stake_authority_keypair: S,    // Stake authority and Nonce Account
-    pub withdraw_authority_keypair: S, // Withdraw authority
+pub(crate) struct TransferStakeKeys {
+    pub stake_authority_keypair: Box<dyn Signer>, // Stake authority and Nonce Account
+    pub withdraw_authority_keypair: Box<dyn Signer>, // Withdraw authority
     pub new_stake_authority_pubkey: Pubkey,
     pub new_withdraw_authority_pubkey: Pubkey,
 }
@@ -44,29 +44,29 @@ fn derive_stake_account_addresses(_client: &RpcClient, base_pubkey: &Pubkey) -> 
     pubkeys
 }
 
-fn split_stake_account<S: Signer>(
+fn split_stake_account(
     _client: &RpcClient,
     _stake_account_address: &Pubkey,
     _new_stake_account_address: &Pubkey,
-    _stake_authority_keypair: &S,
+    _stake_authority_keypair: &dyn Signer,
     _lamports: u64,
 ) -> Result<(), ClientError> {
     println!("Split stake account");
     Ok(())
 }
 
-fn set_authorities<S: Signer>(
+fn set_authorities(
     _client: &RpcClient,
     _stake_account_address: &Pubkey,
-    _keys: &TransferStakeKeys<S>,
+    _keys: &TransferStakeKeys,
 ) -> Result<(), ClientError> {
     println!("Set authorities");
     Ok(())
 }
 
-pub(crate) fn move_stake_account<S: Signer>(
+pub(crate) fn move_stake_account(
     client: &RpcClient,
-    keys: &TransferStakeKeys<S>,
+    keys: &TransferStakeKeys,
 ) -> Result<(), ClientError> {
     let stake_account_addresses =
         derive_stake_account_addresses(client, &keys.stake_authority_keypair.pubkey());
@@ -78,7 +78,7 @@ pub(crate) fn move_stake_account<S: Signer>(
             client,
             &stake_account_address,
             &new_stake_account_address,
-            &keys.stake_authority_keypair,
+            &*keys.stake_authority_keypair,
             lamports,
         )?;
         set_authorities(client, &new_stake_account_address, &keys)?;
