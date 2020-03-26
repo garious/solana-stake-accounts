@@ -1,17 +1,14 @@
 use clap::{value_t, value_t_or_exit, App, Arg, ArgMatches, SubCommand};
-use solana_clap_utils::{
-    input_validators::{is_valid_pubkey, is_valid_signer},
-    keypair::{parse_keypair_path, KeypairUrl},
-};
+use solana_clap_utils::input_validators::{is_amount, is_valid_pubkey, is_valid_signer};
 use solana_cli_config::CONFIG_FILE;
 use solana_sdk::native_token::sol_to_lamports;
 use std::ffi::OsString;
 
 pub(crate) struct DepositCommandConfig {
-    pub fee_payer: Option<KeypairUrl>,
-    pub sender_keypair: KeypairUrl,
+    pub fee_payer: Option<String>,
+    pub sender_keypair: String,
     pub lamports: u64,
-    pub base_pubkey: KeypairUrl,
+    pub base_pubkey: String,
     pub cliff_fraction: Option<f64>,
     pub cliff_years: Option<f64>,
     pub unlock_years: Option<f64>,
@@ -19,41 +16,41 @@ pub(crate) struct DepositCommandConfig {
 }
 
 pub(crate) struct NewCommandConfig {
-    pub base_keypair: KeypairUrl,
-    pub stake_authority: Option<KeypairUrl>,
-    pub withdraw_authority: Option<KeypairUrl>,
-    pub custodian: Option<KeypairUrl>,
+    pub base_keypair: String,
+    pub stake_authority: Option<String>,
+    pub withdraw_authority: Option<String>,
+    pub custodian: Option<String>,
     pub deposit_config: DepositCommandConfig,
 }
 
 pub(crate) struct QueryCommandConfig {
-    pub base_pubkey: KeypairUrl,
+    pub base_pubkey: String,
     pub num_accounts: Option<usize>,
 }
 
 pub(crate) struct WithdrawCommandConfig {
-    pub base_pubkey: KeypairUrl,
-    pub recipient_account_address: KeypairUrl,
+    pub base_pubkey: String,
+    pub recipient_account_address: String,
     pub lamports: u64,
     pub index: Option<usize>,
-    pub withdraw_authority: Option<KeypairUrl>,
+    pub withdraw_authority: Option<String>,
 }
 
 pub(crate) struct RebaseCommandConfig {
-    pub fee_payer: Option<KeypairUrl>,
-    pub base_pubkey: KeypairUrl,
-    pub new_base_keypair: KeypairUrl,
-    pub stake_authority: Option<KeypairUrl>,
+    pub fee_payer: Option<String>,
+    pub base_pubkey: String,
+    pub new_base_keypair: String,
+    pub stake_authority: Option<String>,
     pub num_accounts: Option<usize>,
 }
 
 pub(crate) struct AuthorizeCommandConfig {
-    pub fee_payer: Option<KeypairUrl>,
-    pub base_pubkey: KeypairUrl,
-    pub stake_authority: Option<KeypairUrl>,
-    pub withdraw_authority: Option<KeypairUrl>,
-    pub new_stake_authority: Option<KeypairUrl>,
-    pub new_withdraw_authority: Option<KeypairUrl>,
+    pub fee_payer: Option<String>,
+    pub base_pubkey: String,
+    pub stake_authority: Option<String>,
+    pub withdraw_authority: Option<String>,
+    pub new_stake_authority: Option<String>,
+    pub new_withdraw_authority: Option<String>,
     pub num_accounts: Option<usize>,
 }
 
@@ -236,6 +233,7 @@ where
                         .index(3)
                         .takes_value(true)
                         .value_name("AMOUNT")
+                        .validator(is_amount)
                         .help("Amount to move into the new stake accounts, in SOL"),
                 )
                 .arg(
@@ -279,6 +277,7 @@ where
                         .index(3)
                         .takes_value(true)
                         .value_name("AMOUNT")
+                        .validator(is_amount)
                         .help("Amount to move into the new stake accounts, in SOL"),
                 )
                 .arg(cliff_fraction_arg())
@@ -324,6 +323,7 @@ where
                         .index(3)
                         .takes_value(true)
                         .value_name("AMOUNT")
+                        .validator(is_amount)
                         .help("Amount to withdraw, in SOL"),
                 )
                 .arg(
@@ -373,9 +373,9 @@ where
 
 fn parse_deposit_args(matches: &ArgMatches<'_>) -> DepositCommandConfig {
     let lamports = sol_to_lamports(value_t_or_exit!(matches, "amount", f64));
-    let fee_payer = matches.value_of("fee_payer").map(parse_keypair_path);
-    let sender_keypair = parse_keypair_path(matches.value_of("sender_keypair").unwrap());
-    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
+    let fee_payer = value_t!(matches, "fee_payer", String).ok();
+    let sender_keypair = value_t_or_exit!(matches, "sender_keypair", String);
+    let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
     DepositCommandConfig {
         fee_payer,
         sender_keypair,
@@ -389,12 +389,10 @@ fn parse_deposit_args(matches: &ArgMatches<'_>) -> DepositCommandConfig {
 }
 
 fn parse_new_args(matches: &ArgMatches<'_>) -> NewCommandConfig {
-    let base_keypair = parse_keypair_path(matches.value_of("base_keypair").unwrap());
-    let stake_authority = matches.value_of("stake_authority").map(parse_keypair_path);
-    let withdraw_authority = matches
-        .value_of("withdraw_authority")
-        .map(parse_keypair_path);
-    let custodian = matches.value_of("custodian").map(parse_keypair_path);
+    let base_keypair = value_t_or_exit!(matches, "base_keypair", String);
+    let stake_authority = value_t!(matches, "stake_authority", String).ok();
+    let withdraw_authority = value_t!(matches, "withdraw_authority", String).ok();
+    let custodian = value_t!(matches, "custodian", String).ok();
     let deposit_config = parse_deposit_args(matches);
     NewCommandConfig {
         base_keypair,
@@ -406,7 +404,7 @@ fn parse_new_args(matches: &ArgMatches<'_>) -> NewCommandConfig {
 }
 
 fn parse_query_args(matches: &ArgMatches<'_>) -> QueryCommandConfig {
-    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
+    let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
     let num_accounts = value_t!(matches, "num_accounts", usize).ok();
     QueryCommandConfig {
         base_pubkey,
@@ -415,12 +413,9 @@ fn parse_query_args(matches: &ArgMatches<'_>) -> QueryCommandConfig {
 }
 
 fn parse_withdraw_args(matches: &ArgMatches<'_>) -> WithdrawCommandConfig {
-    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
-    let recipient_account_address =
-        parse_keypair_path(matches.value_of("recipient_account_address").unwrap());
-    let withdraw_authority = matches
-        .value_of("withdraw_authority")
-        .map(parse_keypair_path);
+    let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
+    let recipient_account_address = value_t_or_exit!(matches, "recipient_account_address", String);
+    let withdraw_authority = value_t!(matches, "withdraw_authority", String).ok();
     let lamports = sol_to_lamports(value_t_or_exit!(matches, "amount", f64));
     let index = value_t!(matches, "index", usize).ok();
     WithdrawCommandConfig {
@@ -433,10 +428,10 @@ fn parse_withdraw_args(matches: &ArgMatches<'_>) -> WithdrawCommandConfig {
 }
 
 fn parse_rebase_args(matches: &ArgMatches<'_>) -> RebaseCommandConfig {
-    let fee_payer = matches.value_of("fee_payer").map(parse_keypair_path);
-    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
-    let new_base_keypair = parse_keypair_path(matches.value_of("new_base_keypair").unwrap());
-    let stake_authority = matches.value_of("stake_authority").map(parse_keypair_path);
+    let fee_payer = value_t!(matches, "fee_payer", String).ok();
+    let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
+    let new_base_keypair = value_t_or_exit!(matches, "new_base_keypair", String);
+    let stake_authority = value_t!(matches, "stake_authority", String).ok();
     let num_accounts = value_t!(matches, "num_accounts", usize).ok();
     RebaseCommandConfig {
         fee_payer,
@@ -448,18 +443,12 @@ fn parse_rebase_args(matches: &ArgMatches<'_>) -> RebaseCommandConfig {
 }
 
 fn parse_authorize_args(matches: &ArgMatches<'_>) -> AuthorizeCommandConfig {
-    let fee_payer = matches.value_of("fee_payer").map(parse_keypair_path);
-    let base_pubkey = parse_keypair_path(matches.value_of("base_pubkey").unwrap());
-    let stake_authority = matches.value_of("stake_authority").map(parse_keypair_path);
-    let withdraw_authority = matches
-        .value_of("withdraw_authority")
-        .map(parse_keypair_path);
-    let new_stake_authority = matches
-        .value_of("new_stake_authority")
-        .map(parse_keypair_path);
-    let new_withdraw_authority = matches
-        .value_of("new_withdraw_authority")
-        .map(parse_keypair_path);
+    let fee_payer = value_t!(matches, "fee_payer", String).ok();
+    let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
+    let stake_authority = value_t!(matches, "stake_authority", String).ok();
+    let withdraw_authority = value_t!(matches, "withdraw_authority", String).ok();
+    let new_stake_authority = value_t!(matches, "new_stake_authority", String).ok();
+    let new_withdraw_authority = value_t!(matches, "new_withdraw_authority", String).ok();
     let num_accounts = value_t!(matches, "num_accounts", usize).ok();
     AuthorizeCommandConfig {
         fee_payer,
