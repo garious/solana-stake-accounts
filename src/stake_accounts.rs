@@ -1,6 +1,6 @@
-use solana_sdk::{
-    client::Client, hash::hashv, pubkey::Pubkey, signature::Signer, transport::TransportError,
-};
+use solana_client::client_error::ClientError;
+use solana_client::rpc_client::RpcClient;
+use solana_sdk::{hash::hashv, pubkey::Pubkey, signature::Signer};
 
 pub(crate) struct TransferStakeKeys<S: Signer> {
     pub stake_authority_keypair: S,    // Stake authority and Nonce Account
@@ -32,7 +32,7 @@ fn derive_stake_account_address(base_pubkey: &Pubkey, i: usize) -> Pubkey {
 }
 
 // Return addresses so long as they have a balance.
-fn derive_stake_account_addresses<C: Client>(_client: &C, base_pubkey: &Pubkey) -> Vec<Pubkey> {
+fn derive_stake_account_addresses(_client: &RpcClient, base_pubkey: &Pubkey) -> Vec<Pubkey> {
     println!("Derive stake account addresses");
     let mut pubkeys = vec![];
     let mut i = 0;
@@ -44,30 +44,30 @@ fn derive_stake_account_addresses<C: Client>(_client: &C, base_pubkey: &Pubkey) 
     pubkeys
 }
 
-fn split_stake_account<C: Client, S: Signer>(
-    _client: &C,
+fn split_stake_account<S: Signer>(
+    _client: &RpcClient,
     _stake_account_address: &Pubkey,
     _new_stake_account_address: &Pubkey,
     _stake_authority_keypair: &S,
     _lamports: u64,
-) -> Result<(), TransportError> {
+) -> Result<(), ClientError> {
     println!("Split stake account");
     Ok(())
 }
 
-fn set_authorities<C: Client, S: Signer>(
-    _client: &C,
+fn set_authorities<S: Signer>(
+    _client: &RpcClient,
     _stake_account_address: &Pubkey,
     _keys: &TransferStakeKeys<S>,
-) -> Result<(), TransportError> {
+) -> Result<(), ClientError> {
     println!("Set authorities");
     Ok(())
 }
 
-pub(crate) fn move_stake_account<C: Client, S: Signer>(
-    client: &C,
+pub(crate) fn move_stake_account<S: Signer>(
+    client: &RpcClient,
     keys: &TransferStakeKeys<S>,
-) -> Result<(), TransportError> {
+) -> Result<(), ClientError> {
     let stake_account_addresses =
         derive_stake_account_addresses(client, &keys.stake_authority_keypair.pubkey());
     for (i, stake_account_address) in stake_account_addresses.iter().enumerate() {
