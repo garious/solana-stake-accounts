@@ -77,7 +77,6 @@ pub(crate) enum Command {
 pub(crate) struct CommandConfig {
     pub config_file: String,
     pub url: Option<String>,
-    pub num_nodes: usize,
     pub command: Command,
 }
 
@@ -216,15 +215,6 @@ where
                 .takes_value(true)
                 .value_name("http://<HOST>:<PORT>")
                 .help("RPC entrypoint address. i.e. http://devnet.solana.com"),
-        )
-        .arg(
-            Arg::with_name("num_nodes")
-                .long("num-nodes")
-                .global(true)
-                .takes_value(true)
-                .default_value("1")
-                .value_name("NUMBER")
-                .help("Number of gossip nodes to look for"),
         )
         .subcommand(
             SubCommand::with_name("new")
@@ -499,7 +489,6 @@ where
     let matches = get_matches(args);
     let config_file = matches.value_of("config_file").unwrap().to_string();
     let url = matches.value_of("url").map(|x| x.to_string());
-    let num_nodes = value_t!(matches, "num_nodes", usize).unwrap();
 
     let command = match matches.subcommand() {
         ("new", Some(matches)) => Command::New(parse_new_args(matches)),
@@ -516,7 +505,6 @@ where
     CommandConfig {
         config_file,
         url,
-        num_nodes,
         command,
     }
 }
