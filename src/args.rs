@@ -3,10 +3,9 @@ use solana_clap_utils::{
     input_validators::{is_valid_pubkey, is_valid_signer},
     keypair::{parse_keypair_path, KeypairUrl},
 };
+use solana_cli_config::CONFIG_FILE;
 use solana_sdk::native_token::sol_to_lamports;
 use std::ffi::OsString;
-use std::net::SocketAddr;
-use std::process::exit;
 
 pub(crate) struct DepositCommandConfig {
     pub fee_payer: Option<KeypairUrl>,
@@ -76,7 +75,8 @@ pub(crate) enum Command {
 }
 
 pub(crate) struct CommandConfig {
-    pub entrypoint_addr: SocketAddr,
+    pub config_file: String,
+    pub url: Option<String>,
     pub num_nodes: usize,
     pub command: Command,
 }
@@ -197,20 +197,32 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
+    let default_config_file = CONFIG_FILE.as_ref().unwrap();
     App::new("solana-stake-accounts")
         .about("about")
         .version("version")
         .arg(
-            Arg::with_name("entrypoint")
-                .long("entrypoint")
+            Arg::with_name("config_file")
+                .long("config")
                 .takes_value(true)
-                .value_name("HOST:PORT")
-                .help("Gossip entrypoint address. Usually <ip>:8001"),
+                .value_name("FILEPATH")
+                .default_value(default_config_file)
+                .help("Config file"),
+        )
+        .arg(
+            Arg::with_name("url")
+                .long("url")
+                .global(true)
+                .takes_value(true)
+                .value_name("http://<HOST>:<PORT>")
+                .help("RPC entrypoint address. i.e. http://devnet.solana.com"),
         )
         .arg(
             Arg::with_name("num_nodes")
                 .long("num-nodes")
+                .global(true)
                 .takes_value(true)
+                .default_value("1")
                 .value_name("NUMBER")
                 .help("Number of gossip nodes to look for"),
         )
@@ -485,14 +497,9 @@ where
     T: Into<OsString> + Clone,
 {
     let matches = get_matches(args);
-    let mut entrypoint_addr = SocketAddr::from(([127, 0, 0, 1], 8001));
-    if let Some(addr) = matches.value_of("entrypoint") {
-        entrypoint_addr = solana_net_utils::parse_host_port(addr).unwrap_or_else(|e| {
-            eprintln!("failed to parse entrypoint address: {}", e);
-            exit(1)
-        });
-    }
-    let num_nodes = value_t!(matches, "num_nodes", usize).unwrap_or(1);
+    let config_file = matches.value_of("config_file").unwrap().to_string();
+    let url = matches.value_of("url").map(|x| x.to_string());
+    let num_nodes = value_t!(matches, "num_nodes", usize).unwrap();
 
     let command = match matches.subcommand() {
         ("new", Some(matches)) => Command::New(parse_new_args(matches)),
@@ -507,8 +514,9 @@ where
         _ => panic!("Command not found"),
     };
     CommandConfig {
-        command,
-        entrypoint_addr,
+        config_file,
+        url,
         num_nodes,
+        command,
     }
 }
