@@ -32,12 +32,22 @@ fn derive_stake_account_address(base_pubkey: &Pubkey, i: usize) -> Pubkey {
 }
 
 // Return addresses so long as they have a balance.
-fn derive_stake_account_addresses(_client: &RpcClient, base_pubkey: &Pubkey) -> Vec<Pubkey> {
-    println!("Derive stake account addresses");
+pub fn derive_stake_account_addresses(
+    client: &RpcClient,
+    base_pubkey: &Pubkey,
+    num_accounts: Option<usize>,
+) -> Vec<Pubkey> {
     let mut pubkeys = vec![];
     let mut i = 0;
-    while i < 1 {
+    loop {
         let pubkey = derive_stake_account_address(base_pubkey, i);
+        if let Some(num_accounts) = num_accounts {
+            if i >= num_accounts {
+                break;
+            }
+        } else if client.get_balance(&pubkey).unwrap() == 0 {
+            break;
+        }
         pubkeys.push(pubkey);
         i += 1;
     }
@@ -67,9 +77,13 @@ fn set_authorities(
 pub(crate) fn move_stake_account(
     client: &RpcClient,
     keys: &TransferStakeKeys,
+    num_accounts: Option<usize>,
 ) -> Result<(), ClientError> {
-    let stake_account_addresses =
-        derive_stake_account_addresses(client, &keys.stake_authority_keypair.pubkey());
+    let stake_account_addresses = derive_stake_account_addresses(
+        client,
+        &keys.stake_authority_keypair.pubkey(),
+        num_accounts,
+    );
     for (i, stake_account_address) in stake_account_addresses.iter().enumerate() {
         let new_stake_account_address =
             derive_stake_account_address(&keys.new_stake_authority_pubkey, i);
