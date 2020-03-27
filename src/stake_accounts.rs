@@ -90,18 +90,17 @@ fn create_move_transaction(
     let stake_authority_pubkey = keys.stake_authority_keypair.pubkey();
     let fee_payer_pubkey = keys.fee_payer_keypair.pubkey();
 
-    let seed = format!("{}", i);
+    let new_stake_account_address =
+        derive_stake_account_address(&keys.new_stake_authority_pubkey, i);
     let mut instructions = stake_instruction::split_with_seed(
         &stake_account_address,
         &stake_authority_pubkey,
         lamports,
+        &new_stake_account_address,
         &keys.new_stake_authority_pubkey,
-        &solana_stake_program::id(),
-        &seed,
+        &i.to_string(),
     );
 
-    let new_stake_account_address =
-        derive_stake_account_address(&keys.new_stake_authority_pubkey, i);
     let authorize_instructions = create_authorize_instructions(&new_stake_account_address, keys);
 
     instructions.extend(authorize_instructions.into_iter());
