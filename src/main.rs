@@ -1,18 +1,65 @@
 mod args;
 mod stake_accounts;
 
-use crate::args::{parse_args, Command};
+use crate::args::{parse_args, AuthorizeCommandConfig, Command};
 use crate::stake_accounts::{
-    derive_stake_account_addresses, move_stake_account, TransferStakeKeys,
+    authorize_stake_accounts, derive_stake_account_addresses, move_stake_accounts,
+    TransferStakeKeys,
 };
 use clap::ArgMatches;
 use solana_clap_utils::keypair::{pubkey_from_path, signer_from_path};
 use solana_cli_config::Config;
 use solana_client::rpc_client::RpcClient;
-use solana_remote_wallet::remote_wallet::maybe_wallet_manager;
+use solana_remote_wallet::remote_wallet::{maybe_wallet_manager, RemoteWalletManager};
 use solana_sdk::native_token::lamports_to_sol;
 use std::env;
 use std::error::Error;
+use std::sync::Arc;
+
+fn create_transfer_stake_keys(
+    authorize_config: &AuthorizeCommandConfig,
+    wallet_manager: Option<&Arc<RemoteWalletManager>>,
+) -> Result<TransferStakeKeys, Box<dyn Error>> {
+    let matches = ArgMatches::default();
+    let stake_authority_keypair = signer_from_path(
+        &matches,
+        authorize_config.stake_authority.as_ref().unwrap(),
+        "stake authority",
+        wallet_manager,
+    )?;
+    let withdraw_authority_keypair = signer_from_path(
+        &matches,
+        authorize_config.withdraw_authority.as_ref().unwrap(),
+        "withdraw authority",
+        wallet_manager,
+    )?;
+    let new_stake_authority_pubkey = pubkey_from_path(
+        &matches,
+        authorize_config.new_stake_authority.as_ref().unwrap(),
+        "new stake authority",
+        wallet_manager,
+    )?;
+    let new_withdraw_authority_pubkey = pubkey_from_path(
+        &matches,
+        authorize_config.new_withdraw_authority.as_ref().unwrap(),
+        "new withdraw authority",
+        wallet_manager,
+    )?;
+    let fee_payer_keypair = signer_from_path(
+        &matches,
+        authorize_config.fee_payer.as_ref().unwrap(),
+        "fee-payer",
+        wallet_manager,
+    )?;
+    let keys = TransferStakeKeys {
+        stake_authority_keypair,
+        withdraw_authority_keypair,
+        fee_payer_keypair,
+        new_stake_authority_pubkey,
+        new_withdraw_authority_pubkey,
+    };
+    Ok(keys)
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     let command_config = parse_args(env::args_os());
@@ -52,39 +99,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .sum();
             println!("{} SOL", lamports_to_sol(sum));
         }
+        Command::Authorize(authorize_config) => {
+            let keys = create_transfer_stake_keys(&authorize_config, wallet_manager)?;
+            authorize_stake_accounts(&client, &keys, authorize_config.num_accounts)?;
+        }
         Command::Move(move_config) => {
             let authorize_config = &move_config.authorize_config;
-            let stake_authority_keypair = signer_from_path(
-                &matches,
-                authorize_config.stake_authority.as_ref().unwrap(),
-                "stake authority",
-                wallet_manager,
-            )?;
-            let withdraw_authority_keypair = signer_from_path(
-                &matches,
-                authorize_config.withdraw_authority.as_ref().unwrap(),
-                "withdraw authority",
-                wallet_manager,
-            )?;
-            let new_stake_authority_pubkey = pubkey_from_path(
-                &matches,
-                authorize_config.new_stake_authority.as_ref().unwrap(),
-                "new stake authority",
-                wallet_manager,
-            )?;
-            let new_withdraw_authority_pubkey = pubkey_from_path(
-                &matches,
-                authorize_config.new_withdraw_authority.as_ref().unwrap(),
-                "new withdraw authority",
-                wallet_manager,
-            )?;
-            let keys = TransferStakeKeys {
-                stake_authority_keypair,
-                withdraw_authority_keypair,
-                new_stake_authority_pubkey,
-                new_withdraw_authority_pubkey,
-            };
-            move_stake_account(&client, &keys, authorize_config.num_accounts)?;
+            let keys = create_transfer_stake_keys(&authorize_config, wallet_manager)?;
+            move_stake_accounts(&client, &keys, authorize_config.num_accounts)?;
         }
         _ => todo!(),
     }
