@@ -80,6 +80,7 @@ pub(crate) struct CommandConfig {
 fn fee_payer_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("fee_payer")
         .long("fee-payer")
+        .required(true)
         .takes_value(true)
         .value_name("KEYPAIR")
         .validator(is_valid_signer)
@@ -116,6 +117,7 @@ fn new_base_keypair_arg<'a, 'b>() -> Arg<'a, 'b> {
 fn stake_authority_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("stake_authority")
         .long("stake-authority")
+        .required(true)
         .takes_value(true)
         .value_name("KEYPAIR")
         .validator(is_valid_signer)
@@ -125,6 +127,7 @@ fn stake_authority_arg<'a, 'b>() -> Arg<'a, 'b> {
 fn withdraw_authority_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("withdraw_authority")
         .long("withdraw-authority")
+        .required(true)
         .takes_value(true)
         .value_name("KEYPAIR")
         .validator(is_valid_signer)
@@ -134,6 +137,7 @@ fn withdraw_authority_arg<'a, 'b>() -> Arg<'a, 'b> {
 fn new_stake_authority_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("new_stake_authority")
         .long("new-stake-authority")
+        .required(true)
         .takes_value(true)
         .value_name("PUBKEY")
         .validator(is_valid_pubkey)
@@ -143,6 +147,7 @@ fn new_stake_authority_arg<'a, 'b>() -> Arg<'a, 'b> {
 fn new_withdraw_authority_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("new_withdraw_authority")
         .long("new-withdraw-authority")
+        .required(true)
         .takes_value(true)
         .value_name("PUBKEY")
         .validator(is_valid_pubkey)
@@ -239,6 +244,7 @@ where
                 .arg(
                     Arg::with_name("stake_authority")
                         .long("stake-authority")
+                        .required(true)
                         .takes_value(true)
                         .value_name("PUBKEY")
                         .validator(is_valid_pubkey)
@@ -247,6 +253,7 @@ where
                 .arg(
                     Arg::with_name("withdraw_authority")
                         .long("withdraw-authority")
+                        .required(true)
                         .takes_value(true)
                         .value_name("PUBKEY")
                         .validator(is_valid_pubkey)

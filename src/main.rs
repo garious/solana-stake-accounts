@@ -13,7 +13,7 @@ use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let command_config = parse_args(env::args_os());
-    let config = Config::load(&command_config.config_file).unwrap();
+    let config = Config::load(&command_config.config_file)?;
     let json_rpc_url = command_config.url.unwrap_or(config.json_rpc_url);
     let client = RpcClient::new(json_rpc_url);
 
@@ -28,36 +28,32 @@ fn main() -> Result<(), Box<dyn Error>> {
                 authorize_config.stake_authority.as_ref().unwrap(),
                 "stake authority",
                 wallet_manager,
-            )
-            .unwrap();
+            )?;
             let withdraw_authority_keypair = signer_from_path(
                 &matches,
                 authorize_config.withdraw_authority.as_ref().unwrap(),
                 "withdraw authority",
                 wallet_manager,
-            )
-            .unwrap();
+            )?;
             let new_stake_authority_pubkey = pubkey_from_path(
                 &matches,
                 authorize_config.new_stake_authority.as_ref().unwrap(),
                 "new stake authority",
                 wallet_manager,
-            )
-            .unwrap();
+            )?;
             let new_withdraw_authority_pubkey = pubkey_from_path(
                 &matches,
                 authorize_config.new_withdraw_authority.as_ref().unwrap(),
                 "new withdraw authority",
                 wallet_manager,
-            )
-            .unwrap();
+            )?;
             let keys = TransferStakeKeys {
                 stake_authority_keypair,
                 withdraw_authority_keypair,
                 new_stake_authority_pubkey,
                 new_withdraw_authority_pubkey,
             };
-            move_stake_account(&client, &keys).unwrap();
+            move_stake_account(&client, &keys)?;
         }
         _ => todo!(),
     }
