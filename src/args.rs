@@ -206,7 +206,7 @@ where
                 .long("url")
                 .global(true)
                 .takes_value(true)
-                .value_name("http://<HOST>:<PORT>")
+                .value_name("URL")
                 .help("RPC entrypoint address. i.e. http://devnet.solana.com"),
         )
         .subcommand(
