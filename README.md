@@ -69,36 +69,6 @@ the account exists:
 solana-stake-accounts pubkeys <BASE_PUBKEY> --num-accounts <NUMBER>
 ```
 
-### Show all stake accounts
-
-Show all the stake accounts derived from the given public key:
-
-```bash
-solana-stake-accounts show <BASE_PUBKEY>
-```
-
-Show a specific number of derived stake accounts:
-
-```bash
-solana-stake-accounts show <BASE_PUBKEY> --num-accounts <NUMBER>
-```
-
-### Withdraw tokens
-
-Withdraw tokens from the first derived, unlocked stake account:
-
-```bash
-solana-stake-accounts withdraw <BASE_PUBKEY> <RECIPIENT_ACCOUNT_ADDRESS> <AMOUNT> \
-    --withdraw-authority <KEYPAIR>
-```
-
-Withdraw tokens from a particular stake account:
-
-```bash
-solana-stake-accounts withdraw <BASE_PUBKEY> <RECIPIENT_ACCOUNT_ADDRESS> <AMOUNT> \
-    --withdraw-authority <KEYPAIR> --index <NUMBER>
-```
-
 ### Move stake accounts
 
 Move stake accounts account to a new location.

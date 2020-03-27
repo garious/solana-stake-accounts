@@ -29,14 +29,6 @@ pub(crate) struct QueryCommandConfig {
     pub num_accounts: Option<usize>,
 }
 
-pub(crate) struct WithdrawCommandConfig {
-    pub base_pubkey: String,
-    pub recipient_account_address: String,
-    pub lamports: u64,
-    pub index: Option<usize>,
-    pub withdraw_authority: Option<String>,
-}
-
 pub(crate) struct RebaseCommandConfig {
     pub fee_payer: Option<String>,
     pub base_pubkey: String,
@@ -65,8 +57,6 @@ pub(crate) enum Command {
     Deposit(DepositCommandConfig),
     Balance(QueryCommandConfig),
     Pubkeys(QueryCommandConfig),
-    Show(QueryCommandConfig),
-    Withdraw(WithdrawCommandConfig),
     Rebase(RebaseCommandConfig),
     Authorize(AuthorizeCommandConfig),
     Move(MoveCommandConfig),
@@ -306,45 +296,6 @@ where
                 .arg(num_accounts_arg()),
         )
         .subcommand(
-            SubCommand::with_name("show")
-                .about("Show all derived stake accounts")
-                .arg(base_pubkey_arg().index(1))
-                .arg(num_accounts_arg()),
-        )
-        .subcommand(
-            SubCommand::with_name("withdraw")
-                .about("Withdraw SOL from a derived stake account")
-                .arg(fee_payer_arg())
-                .arg(base_pubkey_arg().index(1))
-                .arg(
-                    Arg::with_name("recipient_account_address")
-                        .required(true)
-                        .index(2)
-                        .takes_value(true)
-                        .value_name("RECIPIENT_ACCOUNT_ADDRESS")
-                        .validator(is_valid_pubkey)
-                        .help("Recipient account address"),
-                )
-                .arg(
-                    Arg::with_name("amount")
-                        .required(true)
-                        .index(3)
-                        .takes_value(true)
-                        .value_name("AMOUNT")
-                        .validator(is_amount)
-                        .help("Amount to withdraw, in SOL"),
-                )
-                .arg(
-                    Arg::with_name("index")
-                        .long("index")
-                        .required(true)
-                        .takes_value(true)
-                        .value_name("NUMBER")
-                        .help("Index of derived stake account to withdraw from"),
-                )
-                .arg(withdraw_authority_arg()),
-        )
-        .subcommand(
             SubCommand::with_name("rebase")
                 .about("Move derived stake accounts to a new location")
                 .arg(fee_payer_arg())
@@ -420,21 +371,6 @@ fn parse_query_args(matches: &ArgMatches<'_>) -> QueryCommandConfig {
     }
 }
 
-fn parse_withdraw_args(matches: &ArgMatches<'_>) -> WithdrawCommandConfig {
-    let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
-    let recipient_account_address = value_t_or_exit!(matches, "recipient_account_address", String);
-    let withdraw_authority = value_t!(matches, "withdraw_authority", String).ok();
-    let lamports = sol_to_lamports(value_t_or_exit!(matches, "amount", f64));
-    let index = value_t!(matches, "index", usize).ok();
-    WithdrawCommandConfig {
-        base_pubkey,
-        recipient_account_address,
-        lamports,
-        index,
-        withdraw_authority,
-    }
-}
-
 fn parse_rebase_args(matches: &ArgMatches<'_>) -> RebaseCommandConfig {
     let fee_payer = value_t!(matches, "fee_payer", String).ok();
     let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
@@ -492,8 +428,6 @@ where
         ("deposit", Some(matches)) => Command::Deposit(parse_deposit_args(matches)),
         ("balance", Some(matches)) => Command::Balance(parse_query_args(matches)),
         ("pubkeys", Some(matches)) => Command::Pubkeys(parse_query_args(matches)),
-        ("show", Some(matches)) => Command::Show(parse_query_args(matches)),
-        ("withdraw", Some(matches)) => Command::Withdraw(parse_withdraw_args(matches)),
         ("rebase", Some(matches)) => Command::Rebase(parse_rebase_args(matches)),
         ("authorize", Some(matches)) => Command::Authorize(parse_authorize_args(matches)),
         ("move", Some(matches)) => Command::Move(parse_move_args(matches)),
