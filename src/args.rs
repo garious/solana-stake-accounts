@@ -3,6 +3,7 @@ use solana_clap_utils::input_validators::{is_amount, is_valid_pubkey, is_valid_s
 use solana_cli_config::CONFIG_FILE;
 use solana_sdk::native_token::sol_to_lamports;
 use std::ffi::OsString;
+use std::process::exit;
 
 pub(crate) struct DepositCommandConfig {
     pub fee_payer: Option<String>,
@@ -496,7 +497,10 @@ where
         ("rebase", Some(matches)) => Command::Rebase(parse_rebase_args(matches)),
         ("authorize", Some(matches)) => Command::Authorize(parse_authorize_args(matches)),
         ("move", Some(matches)) => Command::Move(parse_move_args(matches)),
-        _ => panic!("Command not found"),
+        _ => {
+            eprintln!("{}", matches.usage());
+            exit(1);
+        }
     };
     CommandConfig {
         config_file,
