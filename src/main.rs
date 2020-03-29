@@ -1,11 +1,10 @@
 mod args;
+mod rpc_node_client;
 mod stake_accounts;
 
 use crate::args::{parse_args, AuthorizeCommandConfig, Command};
-use crate::stake_accounts::{
-    authorize_stake_accounts, count_stake_accounts, derive_stake_account_addresses,
-    move_stake_accounts, TransferStakeKeys,
-};
+use crate::rpc_node_client::RpcNodeClient;
+use crate::stake_accounts::TransferStakeKeys;
 use clap::ArgMatches;
 use solana_clap_utils::keypair::{pubkey_from_path, signer_from_path};
 use solana_cli_config::Config;
@@ -71,6 +70,44 @@ fn main() -> Result<(), Box<dyn Error>> {
     let wallet_manager = maybe_wallet_manager()?;
     let wallet_manager = wallet_manager.as_ref();
     match command_config.command {
+        Command::New(new_config) => {
+            let fee_payer_keypair =
+                signer_from_path(&matches, &new_config.fee_payer, "fee-payer", wallet_manager)?;
+            let sender_keypair = signer_from_path(
+                &matches,
+                &new_config.sender_keypair,
+                "sender keypair",
+                wallet_manager,
+            )?;
+            let base_keypair = signer_from_path(
+                &matches,
+                &new_config.base_keypair,
+                "base keypair",
+                wallet_manager,
+            )?;
+            let stake_authority_pubkey = pubkey_from_path(
+                &matches,
+                &new_config.stake_authority,
+                "stake authority",
+                wallet_manager,
+            )?;
+            let withdraw_authority_pubkey = pubkey_from_path(
+                &matches,
+                &new_config.withdraw_authority,
+                "withdraw authority",
+                wallet_manager,
+            )?;
+            let client = RpcNodeClient(&client);
+            stake_accounts::new_stake_account(
+                &client,
+                &*fee_payer_keypair,
+                &*sender_keypair,
+                &*base_keypair,
+                new_config.lamports,
+                &stake_authority_pubkey,
+                &withdraw_authority_pubkey,
+            )?;
+        }
         Command::Count(count_config) => {
             let base_pubkey = pubkey_from_path(
                 &matches,
@@ -78,7 +115,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "base pubkey",
                 wallet_manager,
             )?;
-            let num_accounts = count_stake_accounts(&client, &base_pubkey)?;
+            let client = RpcNodeClient(&client);
+            let num_accounts = stake_accounts::count_stake_accounts(&client, &base_pubkey)?;
             println!("{}", num_accounts);
         }
         Command::Pubkeys(query_config) => {
@@ -88,7 +126,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "base pubkey",
                 wallet_manager,
             )?;
-            let pubkeys = derive_stake_account_addresses(&base_pubkey, query_config.num_accounts);
+            let pubkeys = stake_accounts::derive_stake_account_addresses(
+                &base_pubkey,
+                query_config.num_accounts,
+            );
             for pubkey in pubkeys {
                 println!("{:?}", pubkey);
             }
@@ -100,7 +141,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "base pubkey",
                 wallet_manager,
             )?;
-            let pubkeys = derive_stake_account_addresses(&base_pubkey, query_config.num_accounts);
+            let pubkeys = stake_accounts::derive_stake_account_addresses(
+                &base_pubkey,
+                query_config.num_accounts,
+            );
             let lamports: u64 = pubkeys
                 .iter()
                 .map(|pubkey| client.get_balance(&pubkey).unwrap())
@@ -110,12 +154,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         Command::Authorize(authorize_config) => {
             let keys = create_transfer_stake_keys(&authorize_config, wallet_manager)?;
-            authorize_stake_accounts(&client, &keys, authorize_config.num_accounts)?;
+            stake_accounts::authorize_stake_accounts(
+                &client,
+                &keys,
+                authorize_config.num_accounts,
+            )?;
         }
         Command::Move(move_config) => {
             let authorize_config = &move_config.authorize_config;
             let keys = create_transfer_stake_keys(&authorize_config, wallet_manager)?;
-            move_stake_accounts(&client, &keys, authorize_config.num_accounts)?;
+            stake_accounts::move_stake_accounts(&client, &keys, authorize_config.num_accounts)?;
         }
         _ => todo!(),
     }

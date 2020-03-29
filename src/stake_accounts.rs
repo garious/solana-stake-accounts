@@ -1,10 +1,13 @@
 use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
-    hash::hashv, instruction::Instruction, pubkey::Pubkey, signature::Signer,
-    transaction::Transaction,
+    client::SyncClient, hash::hashv, instruction::Instruction, message::Message, pubkey::Pubkey,
+    signature::Signer, transaction::Transaction,
 };
-use solana_stake_program::{stake_instruction, stake_state::StakeAuthorize};
+use solana_stake_program::{
+    stake_instruction,
+    stake_state::{Authorized, Lockup, StakeAuthorize},
+};
 use std::error::Error;
 
 pub(crate) struct TransferStakeKeys {
@@ -23,8 +26,8 @@ pub enum PubkeyError {
 }
 
 // Return the number of derived stake accounts with balances
-pub fn count_stake_accounts(
-    client: &RpcClient,
+pub fn count_stake_accounts<C: SyncClient>(
+    client: &C,
     base_pubkey: &Pubkey,
 ) -> Result<usize, ClientError> {
     let mut i = 0;
@@ -54,6 +57,36 @@ pub fn derive_stake_account_addresses(base_pubkey: &Pubkey, num_accounts: usize)
     (0..num_accounts)
         .map(|i| derive_stake_account_address(base_pubkey, i))
         .collect()
+}
+
+pub fn new_stake_account<C: SyncClient>(
+    client: &C,
+    fee_payer_keypair: &dyn Signer,
+    sender_keypair: &dyn Signer,
+    base_keypair: &dyn Signer,
+    lamports: u64,
+    stake_authority_pubkey: &Pubkey,
+    withdraw_authority_pubkey: &Pubkey,
+) -> Result<String, ClientError> {
+    let seed = 0;
+    let stake_account_address = derive_stake_account_address(&base_keypair.pubkey(), seed);
+    let authorized = Authorized {
+        staker: *stake_authority_pubkey,
+        withdrawer: *withdraw_authority_pubkey,
+    };
+    let instructions = stake_instruction::create_account_with_seed(
+        &sender_keypair.pubkey(),
+        &stake_account_address,
+        &base_keypair.pubkey(),
+        &seed.to_string(),
+        &authorized,
+        &Lockup::default(),
+        lamports,
+    );
+    let message = Message::new_with_payer(&instructions, Some(&fee_payer_keypair.pubkey()));
+    let signers = vec![&*sender_keypair, &*base_keypair, &*fee_payer_keypair];
+    let signature = client.send_message(&signers, message).unwrap();
+    Ok(signature.to_string())
 }
 
 fn create_authorize_instructions(

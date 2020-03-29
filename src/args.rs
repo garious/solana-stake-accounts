@@ -8,8 +8,8 @@ use std::process::exit;
 pub(crate) struct NewCommandConfig {
     pub fee_payer: String,
     pub sender_keypair: String,
-    pub lamports: u64,
     pub base_keypair: String,
+    pub lamports: u64,
     pub stake_authority: String,
     pub withdraw_authority: String,
 }
