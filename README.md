@@ -15,40 +15,17 @@ solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> \
     --stake-authority <PUBKEY> --withdraw-authority <PUBKEY>
 ```
 
-Create and fund derived stake accounts with a vesting schedule:
+### Count accounts
+
+Count the number of derived accounts:
 
 ```bash
-solana-stake-accounts new <SENDER_KEYPAIR> <BASE_KEYPAIR> <AMOUNT> \
-    --stake-authority <PUBKEY> --withdraw-authority <PUBKEY> \
-    --cliff <PERCENTAGE> --cliff-years <NUMBER> --unlock-years <NUMBER> \
-    --unlocks <NUMBER> --custodian <PUBKEY>
-```
-
-### Fund existing stake accounts
-
-Deposit funds to an existing stake account.
-
-```bash
-solana-stake-accounts deposit <SENDER_KEYPAIR> <BASE_PUBKEY> <AMOUNT> \
-```
-
-Deposit funds to derived stake accounts with a vesting schedule:
-
-```bash
-solana-stake-accounts deposit <SENDER_KEYPAIR> <BASE_PUBKEY> <AMOUNT> \
-    --cliff <PERCENTAGE> --cliff-years <NUMBER> --unlock-years <NUMBER> \
-    --unlocks <NUMBER>
+solana-stake-accounts count <BASE_PUBKEY>
 ```
 
 ### Get stake account balances
 
-Sum the balance of all stake accounts:
-
-```bash
-solana-stake-accounts balance <BASE_PUBKEY>
-```
-
-Sum the balance of a specific number of accounts:
+Sum the balance of dervied stake accounts:
 
 ```bash
 solana-stake-accounts balance <BASE_PUBKEY> --num-accounts <NUMBER>
@@ -59,13 +36,6 @@ solana-stake-accounts balance <BASE_PUBKEY> --num-accounts <NUMBER>
 List the public key of each stake account derived from the given public key:
 
 ```bash
-solana-stake-accounts pubkeys <BASE_PUBKEY>
-```
-
-List a specific amount of derived public keys, whichout first checking if
-the account exists:
-
-```bash
 solana-stake-accounts pubkeys <BASE_PUBKEY> --num-accounts <NUMBER>
 ```
 
@@ -74,21 +44,24 @@ solana-stake-accounts pubkeys <BASE_PUBKEY> --num-accounts <NUMBER>
 Move stake accounts account to a new location.
 
 ```bash
-solana-stake-accounts rebase <BASE_PUBKEY> <NEW_BASE_KEYPAIR> --stake-authority <KEYPAIR>
+solana-stake-accounts rebase <BASE_PUBKEY> <NEW_BASE_KEYPAIR> \
+    --stake-authority <KEYPAIR> --num-accounts <NUMBER>
 ```
 
 Set new authorities:
 
 ```bash
-solana-stake-accounts authorize <BASE_KEYPAIR> \
-    --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR>
-    --new-stake-authority <KEYPAIR> --new-withdraw-authority <PUBKEY>
+solana-stake-accounts authorize <BASE_PUBKEY> \
+    --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR> \
+    --new-stake-authority <KEYPAIR> --new-withdraw-authority <PUBKEY> \
+    --num-accounts <NUMBER>
 ```
 
 Rebase stake accounts and authorize new authorities:
 
 ```bash
-solana-stake-accounts move <BASE_KEYPAIR> \
+solana-stake-accounts move <BASE_PUBKEY> <NEW_BASE_KEYPAIR> \
     --stake-authority <KEYPAIR> --withdraw-authority <KEYPAIR> \
-    --new-stake-authority <KEYPAIR> --new-withdraw-authority <PUBKEY>
+    --new-stake-authority <KEYPAIR> --new-withdraw-authority <PUBKEY> \
+    --num-accounts <NUMBER>
 ```

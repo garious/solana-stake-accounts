@@ -22,6 +22,18 @@ pub enum PubkeyError {
     MaxSeedLengthExceeded,
 }
 
+// Return the number of derived stake accounts with balances
+pub fn count_stake_accounts(
+    client: &RpcClient,
+    base_pubkey: &Pubkey,
+) -> Result<usize, ClientError> {
+    let mut i = 0;
+    while client.get_balance(&derive_stake_account_address(base_pubkey, i))? > 0 {
+        i += 1;
+    }
+    Ok(i)
+}
+
 // TODO: Once solana-1.1 is released, use `Pubkey::create_with_seed`.
 fn create_with_seed(base: &Pubkey, seed: &str, program_id: &Pubkey) -> Result<Pubkey, PubkeyError> {
     if seed.len() > MAX_SEED_LEN {
@@ -37,27 +49,11 @@ fn derive_stake_account_address(base_pubkey: &Pubkey, i: usize) -> Pubkey {
     create_with_seed(base_pubkey, &i.to_string(), &solana_stake_program::id()).unwrap()
 }
 
-// Return addresses so long as they have a balance.
-pub fn derive_stake_account_addresses(
-    client: &RpcClient,
-    base_pubkey: &Pubkey,
-    num_accounts: Option<usize>,
-) -> Vec<Pubkey> {
-    let mut pubkeys = vec![];
-    let mut i = 0;
-    loop {
-        let pubkey = derive_stake_account_address(base_pubkey, i);
-        if let Some(num_accounts) = num_accounts {
-            if i >= num_accounts {
-                break;
-            }
-        } else if client.get_balance(&pubkey).unwrap() == 0 {
-            break;
-        }
-        pubkeys.push(pubkey);
-        i += 1;
-    }
-    pubkeys
+// Return derived addresses
+pub fn derive_stake_account_addresses(base_pubkey: &Pubkey, num_accounts: usize) -> Vec<Pubkey> {
+    (0..num_accounts)
+        .map(|i| derive_stake_account_address(base_pubkey, i))
+        .collect()
 }
 
 fn create_authorize_instructions(
@@ -110,13 +106,10 @@ fn create_move_transaction(
 pub(crate) fn authorize_stake_accounts(
     client: &RpcClient,
     keys: &TransferStakeKeys,
-    num_accounts: Option<usize>,
+    num_accounts: usize,
 ) -> Result<(), Box<dyn Error>> {
-    let stake_account_addresses = derive_stake_account_addresses(
-        client,
-        &keys.stake_authority_keypair.pubkey(),
-        num_accounts,
-    );
+    let stake_account_addresses =
+        derive_stake_account_addresses(&keys.stake_authority_keypair.pubkey(), num_accounts);
     let fee_payer_pubkey = keys.fee_payer_keypair.pubkey();
     let transactions = stake_account_addresses
         .iter()
@@ -140,13 +133,10 @@ pub(crate) fn authorize_stake_accounts(
 pub(crate) fn move_stake_accounts(
     client: &RpcClient,
     keys: &TransferStakeKeys,
-    num_accounts: Option<usize>,
+    num_accounts: usize,
 ) -> Result<(), Box<dyn Error>> {
-    let stake_account_addresses = derive_stake_account_addresses(
-        client,
-        &keys.stake_authority_keypair.pubkey(),
-        num_accounts,
-    );
+    let stake_account_addresses =
+        derive_stake_account_addresses(&keys.stake_authority_keypair.pubkey(), num_accounts);
     let transactions = stake_account_addresses
         .iter()
         .enumerate()

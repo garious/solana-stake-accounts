@@ -3,8 +3,8 @@ mod stake_accounts;
 
 use crate::args::{parse_args, AuthorizeCommandConfig, Command};
 use crate::stake_accounts::{
-    authorize_stake_accounts, derive_stake_account_addresses, move_stake_accounts,
-    TransferStakeKeys,
+    authorize_stake_accounts, count_stake_accounts, derive_stake_account_addresses,
+    move_stake_accounts, TransferStakeKeys,
 };
 use clap::ArgMatches;
 use solana_clap_utils::keypair::{pubkey_from_path, signer_from_path};
@@ -23,31 +23,31 @@ fn create_transfer_stake_keys(
     let matches = ArgMatches::default();
     let stake_authority_keypair = signer_from_path(
         &matches,
-        authorize_config.stake_authority.as_ref().unwrap(),
+        &authorize_config.stake_authority,
         "stake authority",
         wallet_manager,
     )?;
     let withdraw_authority_keypair = signer_from_path(
         &matches,
-        authorize_config.withdraw_authority.as_ref().unwrap(),
+        &authorize_config.withdraw_authority,
         "withdraw authority",
         wallet_manager,
     )?;
     let new_stake_authority_pubkey = pubkey_from_path(
         &matches,
-        authorize_config.new_stake_authority.as_ref().unwrap(),
+        &authorize_config.new_stake_authority,
         "new stake authority",
         wallet_manager,
     )?;
     let new_withdraw_authority_pubkey = pubkey_from_path(
         &matches,
-        authorize_config.new_withdraw_authority.as_ref().unwrap(),
+        &authorize_config.new_withdraw_authority,
         "new withdraw authority",
         wallet_manager,
     )?;
     let fee_payer_keypair = signer_from_path(
         &matches,
-        authorize_config.fee_payer.as_ref().unwrap(),
+        &authorize_config.fee_payer,
         "fee-payer",
         wallet_manager,
     )?;
@@ -71,6 +71,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     let wallet_manager = maybe_wallet_manager()?;
     let wallet_manager = wallet_manager.as_ref();
     match command_config.command {
+        Command::Count(count_config) => {
+            let base_pubkey = pubkey_from_path(
+                &matches,
+                &count_config.base_pubkey,
+                "base pubkey",
+                wallet_manager,
+            )?;
+            let num_accounts = count_stake_accounts(&client, &base_pubkey)?;
+            println!("{}", num_accounts);
+        }
         Command::Pubkeys(query_config) => {
             let base_pubkey = pubkey_from_path(
                 &matches,
@@ -78,8 +88,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "base pubkey",
                 wallet_manager,
             )?;
-            let pubkeys =
-                derive_stake_account_addresses(&client, &base_pubkey, query_config.num_accounts);
+            let pubkeys = derive_stake_account_addresses(&base_pubkey, query_config.num_accounts);
             for pubkey in pubkeys {
                 println!("{:?}", pubkey);
             }
@@ -91,13 +100,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "base pubkey",
                 wallet_manager,
             )?;
-            let pubkeys =
-                derive_stake_account_addresses(&client, &base_pubkey, query_config.num_accounts);
-            let sum: u64 = pubkeys
+            let pubkeys = derive_stake_account_addresses(&base_pubkey, query_config.num_accounts);
+            let lamports: u64 = pubkeys
                 .iter()
                 .map(|pubkey| client.get_balance(&pubkey).unwrap())
                 .sum();
-            println!("{} SOL", lamports_to_sol(sum));
+            let sol = lamports_to_sol(lamports);
+            println!("{} SOL", sol);
         }
         Command::Authorize(authorize_config) => {
             let keys = create_transfer_stake_keys(&authorize_config, wallet_manager)?;
