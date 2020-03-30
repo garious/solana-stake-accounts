@@ -1,40 +1,14 @@
-use solana_client::client_error::ClientError;
-use solana_client::rpc_client::RpcClient;
-use solana_sdk::{
-    client::SyncClient, hash::hashv, instruction::Instruction, message::Message, pubkey::Pubkey,
-    signature::Signer, transaction::Transaction,
-};
+use solana_sdk::{hash::hashv, instruction::Instruction, message::Message, pubkey::Pubkey};
 use solana_stake_program::{
     stake_instruction,
     stake_state::{Authorized, Lockup, StakeAuthorize},
 };
-use std::error::Error;
-
-pub(crate) struct TransferStakeKeys {
-    pub stake_authority_keypair: Box<dyn Signer>,
-    pub withdraw_authority_keypair: Box<dyn Signer>,
-    pub fee_payer_keypair: Box<dyn Signer>,
-    pub new_stake_authority_pubkey: Pubkey,
-    pub new_withdraw_authority_pubkey: Pubkey,
-}
 
 pub const MAX_SEED_LEN: usize = 32;
 
 #[derive(Debug)]
 pub enum PubkeyError {
     MaxSeedLengthExceeded,
-}
-
-// Return the number of derived stake accounts with balances
-pub fn count_stake_accounts<C: SyncClient>(
-    client: &C,
-    base_pubkey: &Pubkey,
-) -> Result<usize, ClientError> {
-    let mut i = 0;
-    while client.get_balance(&derive_stake_account_address(base_pubkey, i))? > 0 {
-        i += 1;
-    }
-    Ok(i)
 }
 
 // TODO: Once solana-1.1 is released, use `Pubkey::create_with_seed`.
@@ -48,142 +22,150 @@ fn create_with_seed(base: &Pubkey, seed: &str, program_id: &Pubkey) -> Result<Pu
     ))
 }
 
-fn derive_stake_account_address(base_pubkey: &Pubkey, i: usize) -> Pubkey {
+pub(crate) fn derive_stake_account_address(base_pubkey: &Pubkey, i: usize) -> Pubkey {
     create_with_seed(base_pubkey, &i.to_string(), &solana_stake_program::id()).unwrap()
 }
 
 // Return derived addresses
-pub fn derive_stake_account_addresses(base_pubkey: &Pubkey, num_accounts: usize) -> Vec<Pubkey> {
+pub(crate) fn derive_stake_account_addresses(
+    base_pubkey: &Pubkey,
+    num_accounts: usize,
+) -> Vec<Pubkey> {
     (0..num_accounts)
         .map(|i| derive_stake_account_address(base_pubkey, i))
         .collect()
 }
 
-pub fn new_stake_account<C: SyncClient>(
-    client: &C,
-    fee_payer_keypair: &dyn Signer,
-    sender_keypair: &dyn Signer,
-    base_keypair: &dyn Signer,
+pub(crate) fn new_stake_account(
+    fee_payer_pubkey: &Pubkey,
+    sender_pubkey: &Pubkey,
+    base_pubkey: &Pubkey,
     lamports: u64,
     stake_authority_pubkey: &Pubkey,
     withdraw_authority_pubkey: &Pubkey,
-) -> Result<String, ClientError> {
+) -> Message {
     let seed = 0;
-    let stake_account_address = derive_stake_account_address(&base_keypair.pubkey(), seed);
+    let stake_account_address = derive_stake_account_address(base_pubkey, seed);
     let authorized = Authorized {
         staker: *stake_authority_pubkey,
         withdrawer: *withdraw_authority_pubkey,
     };
     let instructions = stake_instruction::create_account_with_seed(
-        &sender_keypair.pubkey(),
+        sender_pubkey,
         &stake_account_address,
-        &base_keypair.pubkey(),
+        &base_pubkey,
         &seed.to_string(),
         &authorized,
         &Lockup::default(),
         lamports,
     );
-    let message = Message::new_with_payer(&instructions, Some(&fee_payer_keypair.pubkey()));
-    let signers = vec![&*sender_keypair, &*base_keypair, &*fee_payer_keypair];
-    let signature = client.send_message(&signers, message).unwrap();
-    Ok(signature.to_string())
+    Message::new_with_payer(&instructions, Some(fee_payer_pubkey))
 }
 
-fn create_authorize_instructions(
+fn authorize_stake_accounts_instructions(
     stake_account_address: &Pubkey,
-    keys: &TransferStakeKeys,
+    stake_authority_pubkey: &Pubkey,
+    withdraw_authority_pubkey: &Pubkey,
+    new_stake_authority_pubkey: &Pubkey,
+    new_withdraw_authority_pubkey: &Pubkey,
 ) -> Vec<Instruction> {
-    let stake_authority_pubkey = keys.stake_authority_keypair.pubkey();
-    let withdraw_authority_pubkey = keys.withdraw_authority_keypair.pubkey();
     let instruction0 = stake_instruction::authorize(
         &stake_account_address,
-        &stake_authority_pubkey,
-        &keys.new_stake_authority_pubkey,
+        stake_authority_pubkey,
+        new_stake_authority_pubkey,
         StakeAuthorize::Staker,
     );
     let instruction1 = stake_instruction::authorize(
         &stake_account_address,
-        &withdraw_authority_pubkey,
-        &keys.new_withdraw_authority_pubkey,
+        withdraw_authority_pubkey,
+        new_withdraw_authority_pubkey,
         StakeAuthorize::Withdrawer,
     );
     vec![instruction0, instruction1]
 }
 
-fn create_move_transaction(
+fn move_stake_account(
     stake_account_address: &Pubkey,
-    keys: &TransferStakeKeys,
-    lamports: u64,
+    new_base_pubkey: &Pubkey,
     i: usize,
-) -> Transaction {
-    let stake_authority_pubkey = keys.stake_authority_keypair.pubkey();
-    let fee_payer_pubkey = keys.fee_payer_keypair.pubkey();
-
-    let new_stake_account_address =
-        derive_stake_account_address(&keys.new_stake_authority_pubkey, i);
+    fee_payer_pubkey: &Pubkey,
+    stake_authority_pubkey: &Pubkey,
+    withdraw_authority_pubkey: &Pubkey,
+    new_stake_authority_pubkey: &Pubkey,
+    new_withdraw_authority_pubkey: &Pubkey,
+    lamports: u64,
+) -> Message {
+    let new_stake_account_address = derive_stake_account_address(new_base_pubkey, i);
     let mut instructions = stake_instruction::split_with_seed(
-        &stake_account_address,
-        &stake_authority_pubkey,
+        stake_account_address,
+        stake_authority_pubkey,
         lamports,
         &new_stake_account_address,
-        &keys.new_stake_authority_pubkey,
+        new_stake_authority_pubkey,
         &i.to_string(),
     );
 
-    let authorize_instructions = create_authorize_instructions(&new_stake_account_address, keys);
+    let authorize_instructions = authorize_stake_accounts_instructions(
+        &new_stake_account_address,
+        stake_authority_pubkey,
+        withdraw_authority_pubkey,
+        new_stake_authority_pubkey,
+        new_withdraw_authority_pubkey,
+    );
 
     instructions.extend(authorize_instructions.into_iter());
-    Transaction::new_with_payer(instructions, Some(&fee_payer_pubkey))
+    Message::new_with_payer(&instructions, Some(&fee_payer_pubkey))
 }
 
 pub(crate) fn authorize_stake_accounts(
-    client: &RpcClient,
-    keys: &TransferStakeKeys,
+    fee_payer_pubkey: &Pubkey,
+    base_pubkey: &Pubkey,
+    stake_authority_pubkey: &Pubkey,
+    withdraw_authority_pubkey: &Pubkey,
+    new_stake_authority_pubkey: &Pubkey,
+    new_withdraw_authority_pubkey: &Pubkey,
     num_accounts: usize,
-) -> Result<(), Box<dyn Error>> {
-    let stake_account_addresses =
-        derive_stake_account_addresses(&keys.stake_authority_keypair.pubkey(), num_accounts);
-    let fee_payer_pubkey = keys.fee_payer_keypair.pubkey();
-    let transactions = stake_account_addresses
+) -> Vec<Message> {
+    let stake_account_addresses = derive_stake_account_addresses(base_pubkey, num_accounts);
+    stake_account_addresses
         .iter()
         .map(|stake_account_address| {
-            let instructions = create_authorize_instructions(stake_account_address, keys);
-            Ok(Transaction::new_with_payer(
-                instructions,
-                Some(&fee_payer_pubkey),
-            ))
+            let instructions = authorize_stake_accounts_instructions(
+                stake_account_address,
+                stake_authority_pubkey,
+                withdraw_authority_pubkey,
+                new_stake_authority_pubkey,
+                new_withdraw_authority_pubkey,
+            );
+            Message::new_with_payer(&instructions, Some(&fee_payer_pubkey))
         })
-        .collect::<Result<Vec<_>, ClientError>>()?;
-
-    let signers = vec![
-        &*keys.stake_authority_keypair,
-        &*keys.withdraw_authority_keypair,
-        &*keys.fee_payer_keypair,
-    ];
-    client.send_and_confirm_transactions(transactions, &signers)
+        .collect::<Vec<_>>()
 }
 
 pub(crate) fn move_stake_accounts(
-    client: &RpcClient,
-    keys: &TransferStakeKeys,
-    num_accounts: usize,
-) -> Result<(), Box<dyn Error>> {
-    let stake_account_addresses =
-        derive_stake_account_addresses(&keys.stake_authority_keypair.pubkey(), num_accounts);
-    let transactions = stake_account_addresses
+    fee_payer_pubkey: &Pubkey,
+    new_base_pubkey: &Pubkey,
+    stake_authority_pubkey: &Pubkey,
+    withdraw_authority_pubkey: &Pubkey,
+    new_stake_authority_pubkey: &Pubkey,
+    new_withdraw_authority_pubkey: &Pubkey,
+    balances: &[(Pubkey, u64)],
+) -> Vec<Message> {
+    balances
         .iter()
         .enumerate()
-        .map(|(i, stake_account_address)| {
-            let lamports = client.get_balance(&stake_account_address)?;
-            let transaction = create_move_transaction(stake_account_address, keys, lamports, i);
-            Ok(transaction)
+        .map(|(i, (stake_account_address, lamports))| {
+            move_stake_account(
+                stake_account_address,
+                new_base_pubkey,
+                i,
+                fee_payer_pubkey,
+                stake_authority_pubkey,
+                withdraw_authority_pubkey,
+                new_stake_authority_pubkey,
+                new_withdraw_authority_pubkey,
+                *lamports,
+            )
         })
-        .collect::<Result<Vec<_>, ClientError>>()?;
-
-    let signers = vec![
-        &*keys.stake_authority_keypair,
-        &*keys.withdraw_authority_keypair,
-        &*keys.fee_payer_keypair,
-    ];
-    client.send_and_confirm_transactions(transactions, &signers)
+        .collect()
 }
