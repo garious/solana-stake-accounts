@@ -169,3 +169,56 @@ pub(crate) fn move_stake_accounts(
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use solana_runtime::{bank::Bank, bank_client::BankClient};
+    use solana_sdk::{
+        client::SyncClient,
+        genesis_config::create_genesis_config,
+        signature::{Keypair, Signer},
+    };
+    use solana_stake_program::stake_state::StakeState;
+
+    fn create_bank(lamports: u64) -> (Bank, Keypair) {
+        let (genesis_config, mint_keypair) = create_genesis_config(lamports);
+        let mut bank = Bank::new(&genesis_config);
+        bank.add_instruction_processor(
+            solana_stake_program::id(),
+            solana_stake_program::stake_instruction::process_instruction,
+        );
+        (bank, mint_keypair)
+    }
+
+    #[test]
+    fn test_new_stake_account() {
+        let (bank, sender_keypair) = create_bank(10_000_000);
+        let rent = bank.get_minimum_balance_for_rent_exemption(std::mem::size_of::<StakeState>());
+        let sender_pubkey = sender_keypair.pubkey();
+        let bank_client = BankClient::new(bank);
+        let fee_payer_keypair = Keypair::new();
+        let fee_payer_pubkey = fee_payer_keypair.pubkey();
+        bank_client
+            .transfer(1, &sender_keypair, &fee_payer_pubkey)
+            .unwrap();
+
+        let base_keypair = Keypair::new();
+        let base_pubkey = base_keypair.pubkey();
+        let lamports = rent + 1;
+        let stake_authority_pubkey = Pubkey::new_rand();
+        let withdraw_authority_pubkey = Pubkey::new_rand();
+
+        let message = new_stake_account(
+            &fee_payer_pubkey,
+            &sender_pubkey,
+            &base_pubkey,
+            lamports,
+            &stake_authority_pubkey,
+            &withdraw_authority_pubkey,
+        );
+
+        let signers = [&sender_keypair, &fee_payer_keypair, &base_keypair];
+        bank_client.send_message(&signers, message).unwrap();
+    }
+}
