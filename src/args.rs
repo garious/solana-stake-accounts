@@ -23,14 +23,6 @@ pub(crate) struct QueryCommandConfig {
     pub num_accounts: usize,
 }
 
-pub(crate) struct RebaseCommandConfig {
-    pub fee_payer: String,
-    pub base_pubkey: String,
-    pub new_base_keypair: String,
-    pub stake_authority: String,
-    pub num_accounts: usize,
-}
-
 pub(crate) struct AuthorizeCommandConfig {
     pub fee_payer: String,
     pub base_pubkey: String,
@@ -38,6 +30,14 @@ pub(crate) struct AuthorizeCommandConfig {
     pub withdraw_authority: String,
     pub new_stake_authority: String,
     pub new_withdraw_authority: String,
+    pub num_accounts: usize,
+}
+
+pub(crate) struct RebaseCommandConfig {
+    pub fee_payer: String,
+    pub base_pubkey: String,
+    pub new_base_keypair: String,
+    pub stake_authority: String,
     pub num_accounts: usize,
 }
 
@@ -51,8 +51,8 @@ pub(crate) enum Command {
     Count(CountCommandConfig),
     Pubkeys(QueryCommandConfig),
     Balance(QueryCommandConfig),
-    Rebase(RebaseCommandConfig),
     Authorize(AuthorizeCommandConfig),
+    Rebase(RebaseCommandConfig),
     Move(MoveCommandConfig),
 }
 
@@ -233,15 +233,6 @@ where
                 .arg(num_accounts_arg()),
         )
         .subcommand(
-            SubCommand::with_name("rebase")
-                .about("Move derived stake accounts to a new location")
-                .arg(fee_payer_arg())
-                .arg(base_pubkey_arg().index(1))
-                .arg(new_base_keypair_arg().index(2))
-                .arg(stake_authority_arg())
-                .arg(num_accounts_arg()),
-        )
-        .subcommand(
             SubCommand::with_name("authorize")
                 .about("Set new authorities in all derived stake accounts")
                 .arg(fee_payer_arg())
@@ -250,6 +241,15 @@ where
                 .arg(withdraw_authority_arg())
                 .arg(new_stake_authority_arg())
                 .arg(new_withdraw_authority_arg())
+                .arg(num_accounts_arg()),
+        )
+        .subcommand(
+            SubCommand::with_name("rebase")
+                .about("Relocate derived stake accounts")
+                .arg(fee_payer_arg())
+                .arg(base_pubkey_arg().index(1))
+                .arg(new_base_keypair_arg().index(2))
+                .arg(stake_authority_arg())
                 .arg(num_accounts_arg()),
         )
         .subcommand(
@@ -298,21 +298,6 @@ fn parse_query_args(matches: &ArgMatches<'_>) -> QueryCommandConfig {
     }
 }
 
-fn parse_rebase_args(matches: &ArgMatches<'_>) -> RebaseCommandConfig {
-    let fee_payer = value_t_or_exit!(matches, "fee_payer", String);
-    let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
-    let new_base_keypair = value_t_or_exit!(matches, "new_base_keypair", String);
-    let stake_authority = value_t_or_exit!(matches, "stake_authority", String);
-    let num_accounts = value_t_or_exit!(matches, "num_accounts", usize);
-    RebaseCommandConfig {
-        fee_payer,
-        base_pubkey,
-        new_base_keypair,
-        stake_authority,
-        num_accounts,
-    }
-}
-
 fn parse_authorize_args(matches: &ArgMatches<'_>) -> AuthorizeCommandConfig {
     let fee_payer = value_t_or_exit!(matches, "fee_payer", String);
     let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
@@ -328,6 +313,21 @@ fn parse_authorize_args(matches: &ArgMatches<'_>) -> AuthorizeCommandConfig {
         withdraw_authority,
         new_stake_authority,
         new_withdraw_authority,
+        num_accounts,
+    }
+}
+
+fn parse_rebase_args(matches: &ArgMatches<'_>) -> RebaseCommandConfig {
+    let fee_payer = value_t_or_exit!(matches, "fee_payer", String);
+    let base_pubkey = value_t_or_exit!(matches, "base_pubkey", String);
+    let new_base_keypair = value_t_or_exit!(matches, "new_base_keypair", String);
+    let stake_authority = value_t_or_exit!(matches, "stake_authority", String);
+    let num_accounts = value_t_or_exit!(matches, "num_accounts", usize);
+    RebaseCommandConfig {
+        fee_payer,
+        base_pubkey,
+        new_base_keypair,
+        stake_authority,
         num_accounts,
     }
 }
@@ -355,8 +355,8 @@ where
         ("count", Some(matches)) => Command::Count(parse_count_args(matches)),
         ("pubkeys", Some(matches)) => Command::Pubkeys(parse_query_args(matches)),
         ("balance", Some(matches)) => Command::Balance(parse_query_args(matches)),
-        ("rebase", Some(matches)) => Command::Rebase(parse_rebase_args(matches)),
         ("authorize", Some(matches)) => Command::Authorize(parse_authorize_args(matches)),
+        ("rebase", Some(matches)) => Command::Rebase(parse_rebase_args(matches)),
         ("move", Some(matches)) => Command::Move(parse_move_args(matches)),
         _ => {
             eprintln!("{}", matches.usage());

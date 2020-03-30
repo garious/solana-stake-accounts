@@ -39,16 +39,9 @@ List the public key of each stake account derived from the given public key:
 solana-stake-accounts pubkeys <BASE_PUBKEY> --num-accounts <NUMBER>
 ```
 
-### Move stake accounts
+### Set new authorities
 
-Move stake accounts account to a new location.
-
-```bash
-solana-stake-accounts rebase <BASE_PUBKEY> <NEW_BASE_KEYPAIR> \
-    --stake-authority <KEYPAIR> --num-accounts <NUMBER>
-```
-
-Set new authorities:
+Set new authorities on each derived stake account:
 
 ```bash
 solana-stake-accounts authorize <BASE_PUBKEY> \
@@ -57,7 +50,17 @@ solana-stake-accounts authorize <BASE_PUBKEY> \
     --num-accounts <NUMBER>
 ```
 
-Rebase stake accounts and authorize new authorities:
+### Relocate stake accounts
+
+Relocate stake accounts:
+
+```bash
+solana-stake-accounts rebase <BASE_PUBKEY> <NEW_BASE_KEYPAIR> \
+    --stake-authority <KEYPAIR> --num-accounts <NUMBER>
+```
+
+To atomically rebase and authorize each stake account, use the 'move'
+command:
 
 ```bash
 solana-stake-accounts move <BASE_PUBKEY> <NEW_BASE_KEYPAIR> \
