@@ -3,6 +3,7 @@ mod stake_accounts;
 
 use crate::args::{
     parse_args, AuthorizeCommandConfig, Command, MoveCommandConfig, NewCommandConfig,
+    RebaseCommandConfig,
 };
 use clap::ArgMatches;
 use solana_clap_utils::keypair::{pubkey_from_path, signer_from_path};
@@ -170,6 +171,33 @@ fn process_authorize_stake_accounts(
     Ok(())
 }
 
+fn process_rebase_stake_accounts(
+    client: &RpcClient,
+    wallet_manager: Option<&Arc<RemoteWalletManager>>,
+    rebase_config: &RebaseCommandConfig,
+) -> Result<(), Box<dyn Error>> {
+    let fee_payer_keypair = resolve_fee_payer(wallet_manager, &rebase_config.fee_payer)?;
+    let base_pubkey = resolve_base_pubkey(wallet_manager, &rebase_config.base_pubkey)?;
+    let stake_authority_keypair =
+        resolve_stake_authority(wallet_manager, &rebase_config.stake_authority)?;
+    let pubkeys =
+        stake_accounts::derive_stake_account_addresses(&base_pubkey, rebase_config.num_accounts);
+    let balances = get_balances(&client, pubkeys)?;
+
+    let messages = stake_accounts::rebase_stake_accounts(
+        &fee_payer_keypair.pubkey(),
+        &base_pubkey,
+        &stake_authority_keypair.pubkey(),
+        &balances,
+    );
+    let signers = vec![&*fee_payer_keypair, &*stake_authority_keypair];
+    for message in messages {
+        let signature = send_message(client, message, &signers)?;
+        println!("{}", signature);
+    }
+    Ok(())
+}
+
 fn process_move_stake_accounts(
     client: &RpcClient,
     wallet_manager: Option<&Arc<RemoteWalletManager>>,
@@ -188,10 +216,7 @@ fn process_move_stake_accounts(
         resolve_new_withdraw_authority(wallet_manager, &authorize_config.new_withdraw_authority)?;
     let pubkeys =
         stake_accounts::derive_stake_account_addresses(&base_pubkey, authorize_config.num_accounts);
-    let balances = pubkeys
-        .into_iter()
-        .map(|pubkey| client.get_balance(&pubkey).map(|bal| (pubkey, bal)))
-        .collect::<Result<Vec<_>, ClientError>>()?;
+    let balances = get_balances(&client, pubkeys)?;
 
     let messages = stake_accounts::move_stake_accounts(
         &fee_payer_keypair.pubkey(),
@@ -265,10 +290,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         Command::Authorize(authorize_config) => {
             process_authorize_stake_accounts(&client, wallet_manager, &authorize_config)?;
         }
+        Command::Rebase(rebase_config) => {
+            process_rebase_stake_accounts(&client, wallet_manager, &rebase_config)?;
+        }
         Command::Move(move_config) => {
             process_move_stake_accounts(&client, wallet_manager, &move_config)?;
         }
-        _ => todo!(),
     }
     Ok(())
 }

@@ -84,6 +84,26 @@ fn authorize_stake_accounts_instructions(
     vec![instruction0, instruction1]
 }
 
+fn rebase_stake_account(
+    stake_account_address: &Pubkey,
+    new_base_pubkey: &Pubkey,
+    i: usize,
+    fee_payer_pubkey: &Pubkey,
+    stake_authority_pubkey: &Pubkey,
+    lamports: u64,
+) -> Message {
+    let new_stake_account_address = derive_stake_account_address(new_base_pubkey, i);
+    let instructions = stake_instruction::split_with_seed(
+        stake_account_address,
+        stake_authority_pubkey,
+        lamports,
+        &new_stake_account_address,
+        new_base_pubkey,
+        &i.to_string(),
+    );
+    Message::new_with_payer(&instructions, Some(&fee_payer_pubkey))
+}
+
 fn move_stake_account(
     stake_account_address: &Pubkey,
     new_base_pubkey: &Pubkey,
@@ -140,6 +160,28 @@ pub(crate) fn authorize_stake_accounts(
             Message::new_with_payer(&instructions, Some(&fee_payer_pubkey))
         })
         .collect::<Vec<_>>()
+}
+
+pub(crate) fn rebase_stake_accounts(
+    fee_payer_pubkey: &Pubkey,
+    new_base_pubkey: &Pubkey,
+    stake_authority_pubkey: &Pubkey,
+    balances: &[(Pubkey, u64)],
+) -> Vec<Message> {
+    balances
+        .iter()
+        .enumerate()
+        .map(|(i, (stake_account_address, lamports))| {
+            rebase_stake_account(
+                stake_account_address,
+                new_base_pubkey,
+                i,
+                fee_payer_pubkey,
+                stake_authority_pubkey,
+                *lamports,
+            )
+        })
+        .collect()
 }
 
 pub(crate) fn move_stake_accounts(
@@ -314,6 +356,63 @@ mod tests {
     }
 
     #[test]
+    fn test_rebase_stake_accounts() {
+        let (bank, sender_keypair, rent) = create_bank(10_000_000);
+        let sender_pubkey = sender_keypair.pubkey();
+        let bank_client = BankClient::new(bank);
+        let fee_payer_keypair = create_account(&bank_client, &sender_keypair, 1);
+        let fee_payer_pubkey = fee_payer_keypair.pubkey();
+
+        let base_keypair = Keypair::new();
+        let base_pubkey = base_keypair.pubkey();
+        let lamports = rent + 1;
+
+        let stake_authority_keypair = Keypair::new();
+        let stake_authority_pubkey = stake_authority_keypair.pubkey();
+        let withdraw_authority_keypair = Keypair::new();
+        let withdraw_authority_pubkey = withdraw_authority_keypair.pubkey();
+
+        let num_accounts = 1;
+        let message = new_stake_account(
+            &fee_payer_pubkey,
+            &sender_pubkey,
+            &base_pubkey,
+            lamports,
+            &stake_authority_pubkey,
+            &withdraw_authority_pubkey,
+        );
+
+        let signers = [&sender_keypair, &fee_payer_keypair, &base_keypair];
+        bank_client.send_message(&signers, message).unwrap();
+
+        let new_base_keypair = Keypair::new();
+        let new_base_pubkey = new_base_keypair.pubkey();
+        let balances = get_balances(&bank_client, &base_pubkey, num_accounts);
+        let messages = rebase_stake_accounts(
+            &fee_payer_pubkey,
+            &new_base_pubkey,
+            &stake_authority_pubkey,
+            &balances,
+        );
+        assert_eq!(messages.len(), num_accounts);
+
+        let signers = [
+            &fee_payer_keypair,
+            &new_base_keypair,
+            &stake_authority_keypair,
+        ];
+        for message in messages {
+            bank_client.send_message(&signers, message).unwrap();
+        }
+
+        // Ensure the new accounts are duplicates of the previous ones.
+        let account = get_account_at(&bank_client, &new_base_pubkey, 0);
+        let authorized = StakeState::authorized_from(&account).unwrap();
+        assert_eq!(authorized.staker, stake_authority_pubkey);
+        assert_eq!(authorized.withdrawer, withdraw_authority_pubkey);
+    }
+
+    #[test]
     fn test_move_stake_accounts() {
         let (bank, sender_keypair, rent) = create_bank(10_000_000);
         let sender_pubkey = sender_keypair.pubkey();
@@ -369,6 +468,7 @@ mod tests {
             bank_client.send_message(&signers, message).unwrap();
         }
 
+        // Ensure the new accounts have the new authorities.
         let account = get_account_at(&bank_client, &new_base_pubkey, 0);
         let authorized = StakeState::authorized_from(&account).unwrap();
         assert_eq!(authorized.staker, new_stake_authority_pubkey);
