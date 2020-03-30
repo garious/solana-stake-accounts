@@ -11,7 +11,8 @@ use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_remote_wallet::remote_wallet::{maybe_wallet_manager, RemoteWalletManager};
 use solana_sdk::{
-    native_token::lamports_to_sol, pubkey::Pubkey, signature::Signer, transaction::Transaction,
+    message::Message, native_token::lamports_to_sol, pubkey::Pubkey, signature::Signer,
+    signers::Signers, transaction::Transaction,
 };
 use std::env;
 use std::error::Error;
@@ -128,9 +129,8 @@ fn process_new_stake_account(
         &stake_authority_pubkey,
         &withdraw_authority_pubkey,
     );
-    let mut transaction = Transaction::new_unsigned(message);
     let signers = vec![&*fee_payer_keypair, &*sender_keypair, &*base_keypair];
-    let signature = client.send_and_confirm_transaction_with_spinner(&mut transaction, &signers)?;
+    let signature = send_message(client, message, &signers)?;
     Ok(signature)
 }
 
@@ -158,18 +158,14 @@ fn process_authorize_stake_accounts(
         &new_withdraw_authority_pubkey,
         authorize_config.num_accounts,
     );
-    let mut transactions: Vec<_> = messages
-        .into_iter()
-        .map(Transaction::new_unsigned)
-        .collect();
     let signers = vec![
         &*fee_payer_keypair,
         &*stake_authority_keypair,
         &*withdraw_authority_keypair,
     ];
-    for transaction in &mut transactions {
-        let signature = client.send_and_confirm_transaction_with_spinner(transaction, &signers)?;
-        println!("{:?}", signature);
+    for message in messages {
+        let signature = send_message(client, message, &signers)?;
+        println!("{}", signature);
     }
     Ok(())
 }
@@ -206,20 +202,26 @@ fn process_move_stake_accounts(
         &new_withdraw_authority_pubkey,
         &balances,
     );
-    let mut transactions: Vec<_> = messages
-        .into_iter()
-        .map(Transaction::new_unsigned)
-        .collect();
     let signers = vec![
         &*fee_payer_keypair,
         &*stake_authority_keypair,
         &*withdraw_authority_keypair,
     ];
-    for transaction in &mut transactions {
-        let signature = client.send_and_confirm_transaction_with_spinner(transaction, &signers)?;
-        println!("{:?}", signature);
+    for message in messages {
+        let signature = send_message(client, message, &signers)?;
+        println!("{}", signature);
     }
     Ok(())
+}
+
+fn send_message<S: Signers>(
+    client: &RpcClient,
+    message: Message,
+    signers: &S,
+) -> Result<String, ClientError> {
+    let mut transaction = Transaction::new_unsigned(message);
+    client.resign_transaction(&mut transaction, signers)?;
+    client.send_and_confirm_transaction_with_spinner(&mut transaction, signers)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
